@@ -3,6 +3,8 @@ import { createHmac, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { googleAccounts } from "@/lib/db/schema";
+import { decryptToken, encryptToken, isEncrypted } from "@/lib/crypto/tokens";
+import { fetchWithTimeout } from "@/lib/utils/fetch";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -88,7 +90,7 @@ export async function exchangeCode(code: string): Promise<TokenResponse> {
     redirect_uri: env("GOOGLE_OAUTH_REDIRECT_URL"),
     grant_type: "authorization_code",
   });
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
@@ -98,7 +100,7 @@ export async function exchangeCode(code: string): Promise<TokenResponse> {
 }
 
 export async function fetchUserInfo(accessToken: string): Promise<{ email: string }> {
-  const res = await fetch(USERINFO_URL, {
+  const res = await fetchWithTimeout(USERINFO_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) throw new Error(`Userinfo failed: ${res.status}`);
@@ -116,11 +118,12 @@ export async function persistTokens(
     .from(googleAccounts)
     .where(eq(googleAccounts.userId, userId));
   if (existing) {
+    const refreshSource = tokens.refresh_token ?? decryptToken(existing.refreshToken);
     await db
       .update(googleAccounts)
       .set({
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token ?? existing.refreshToken,
+        accessToken: encryptToken(tokens.access_token),
+        refreshToken: encryptToken(refreshSource),
         expiresAt,
         scope: tokens.scope ?? existing.scope,
         email,
@@ -133,8 +136,8 @@ export async function persistTokens(
     await db.insert(googleAccounts).values({
       userId,
       email,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
+      accessToken: encryptToken(tokens.access_token),
+      refreshToken: encryptToken(tokens.refresh_token),
       expiresAt,
       scope: tokens.scope ?? "",
     });
@@ -148,7 +151,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> 
     client_secret: env("GOOGLE_CLIENT_SECRET"),
     grant_type: "refresh_token",
   });
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
@@ -169,15 +172,31 @@ export async function getAuthorizedAccessToken(userId: string): Promise<string |
   if (!account) return null;
 
   if (account.expiresAt.getTime() > Date.now() + 30_000) {
-    return account.accessToken;
+    const accessPlain = decryptToken(account.accessToken);
+    // Lazy-migrate: if the row was plaintext, re-encrypt it on the spot so the
+    // database moves toward fully-encrypted state without a separate migration step.
+    if (!isEncrypted(account.accessToken) || !isEncrypted(account.refreshToken)) {
+      await db
+        .update(googleAccounts)
+        .set({
+          accessToken: encryptToken(accessPlain),
+          refreshToken: encryptToken(decryptToken(account.refreshToken)),
+        })
+        .where(eq(googleAccounts.id, account.id));
+    }
+    return accessPlain;
   }
 
-  const refreshed = await refreshAccessToken(account.refreshToken);
+  const refreshTokenPlain = decryptToken(account.refreshToken);
+  const refreshed = await refreshAccessToken(refreshTokenPlain);
   const expiresAt = new Date(Date.now() + (refreshed.expires_in - 60) * 1000);
   await db
     .update(googleAccounts)
     .set({
-      accessToken: refreshed.access_token,
+      accessToken: encryptToken(refreshed.access_token),
+      // Re-encrypt refresh token on every refresh so legacy plaintext rows
+      // self-heal even when Google doesn't issue a new refresh token.
+      refreshToken: encryptToken(refreshed.refresh_token ?? refreshTokenPlain),
       expiresAt,
       scope: refreshed.scope ?? account.scope,
     })
@@ -192,7 +211,8 @@ export async function revokeAndDelete(userId: string): Promise<void> {
     .where(eq(googleAccounts.userId, userId));
   if (!account) return;
   try {
-    await fetch(`${REVOKE_URL}?token=${encodeURIComponent(account.refreshToken)}`, {
+    const refreshTokenPlain = decryptToken(account.refreshToken);
+    await fetchWithTimeout(`${REVOKE_URL}?token=${encodeURIComponent(refreshTokenPlain)}`, {
       method: "POST",
     });
   } catch (e) {

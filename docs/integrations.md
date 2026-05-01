@@ -107,6 +107,7 @@ You should get `{"ok":true}` back. You can also do this in the browser by visiti
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_OAUTH_REDIRECT_URL`
+- `TOKEN_ENCRYPTION_KEY` — 32 random bytes (base64) used to encrypt Google OAuth tokens at rest. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Rotating this key invalidates existing stored tokens; users will need to reconnect.
 
 OAuth redirect must match the app callback route.
 
@@ -144,7 +145,16 @@ OAuth redirect must match the app callback route.
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_OAUTH_REDIRECT_URL=http://localhost:3000/api/google/oauth/callback
+TOKEN_ENCRYPTION_KEY=...base64-of-32-random-bytes...
 ```
+
+Generate the encryption key once and keep it stable for the lifetime of the install:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+If you connected Google before adding this key, run `pnpm encrypt:google-tokens` once to backfill existing rows.
 
 Restart the dev server after saving.
 

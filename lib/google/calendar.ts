@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { googleAccounts } from "@/lib/db/schema";
 import { getAuthorizedAccessToken } from "./oauth";
+import { fetchWithTimeout } from "@/lib/utils/fetch";
 
 const API_BASE = "https://www.googleapis.com/calendar/v3";
 const CALENDAR_NAME = "Bread Pitt";
@@ -29,7 +30,7 @@ async function gfetch(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, {
+  return fetchWithTimeout(`${API_BASE}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,

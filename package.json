@@ -11,7 +11,8 @@
     "db:migrate": "tsx --tsconfig tsconfig.scripts.json scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "seed:admin": "tsx --tsconfig tsconfig.scripts.json scripts/seed-admin.ts",
-    "knowledge:sync": "tsx --tsconfig tsconfig.scripts.json scripts/sync-knowledge.ts"
+    "knowledge:sync": "tsx --tsconfig tsconfig.scripts.json scripts/sync-knowledge.ts",
+    "encrypt:google-tokens": "tsx --tsconfig tsconfig.scripts.json scripts/encrypt-google-tokens.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

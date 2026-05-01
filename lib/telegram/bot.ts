@@ -14,6 +14,12 @@ import {
   confirmStarterMature,
 } from "@/lib/processes/engine";
 import { renderTodaySummary, renderStatus } from "./templates";
+import { fetchWithTimeout } from "@/lib/utils/fetch";
+
+// Reject photos larger than this; Telegram caps at 20 MB but 5 is plenty for a step log.
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+// Refuse to write uploads when free space falls below this threshold.
+const MIN_FREE_SPACE_BYTES = 100 * 1024 * 1024;
 
 export type ReplyMarkup = {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
@@ -151,14 +157,63 @@ function registerCommands(bot: Bot) {
     }
     // Download the largest photo
     const photo = ctx.message.photo[ctx.message.photo.length - 1];
+
+    // Telegram tells us file_size up front for photos — bail before downloading
+    // anything if it's over our cap.
+    if (photo.file_size && photo.file_size > MAX_PHOTO_BYTES) {
+      await ctx.reply(
+        `That photo is too big (${Math.round(photo.file_size / (1024 * 1024))} MB). Max is ${MAX_PHOTO_BYTES / (1024 * 1024)} MB.`
+      );
+      return;
+    }
+
     const file = await ctx.api.getFile(photo.file_id);
-    const url = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+    if (!file.file_path) {
+      await ctx.reply("Couldn't fetch that photo from Telegram. Try sending it again.");
+      return;
+    }
+
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
+    const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    if (!(await hasFreeSpace(uploadsDir, MIN_FREE_SPACE_BYTES))) {
+      console.error("[telegram] refusing photo: low disk space at", uploadsDir);
+      await ctx.reply("Storage is full on the server — couldn't save that photo.");
+      return;
+    }
+
     const fname = `tg-${Date.now()}-${photo.file_unique_id}.jpg`;
-    const dest = path.resolve(process.cwd(), "data", "uploads", fname);
-    const res = await fetch(url);
-    const buf = Buffer.from(await res.arrayBuffer());
+    const dest = path.resolve(uploadsDir, fname);
+    const url = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+
+    let buf: Buffer;
+    try {
+      const res = await fetchWithTimeout(url, { timeoutMs: 15_000 });
+      if (!res.ok) {
+        console.error("[telegram] photo download failed", res.status);
+        await ctx.reply("Couldn't download that photo from Telegram.");
+        return;
+      }
+      // Re-check size from Content-Length when present, defensively.
+      const len = Number(res.headers.get("content-length") ?? "0");
+      if (len > MAX_PHOTO_BYTES) {
+        await ctx.reply("That photo is too big to log.");
+        return;
+      }
+      const ab = await res.arrayBuffer();
+      if (ab.byteLength > MAX_PHOTO_BYTES) {
+        await ctx.reply("That photo is too big to log.");
+        return;
+      }
+      buf = Buffer.from(ab);
+    } catch (e) {
+      console.error("[telegram] photo fetch threw", e);
+      await ctx.reply("Couldn't download that photo. Try again in a moment.");
+      return;
+    }
+
     await fs.writeFile(dest, buf);
     await recordObservation({
       processId: next.process.id,
@@ -169,6 +224,20 @@ function registerCommands(bot: Bot) {
     });
     await ctx.reply(`Photo logged to <i>${escape(next.step.title)}</i>.`, { parse_mode: "HTML" });
   });
+}
+
+async function hasFreeSpace(dir: string, minBytes: number): Promise<boolean> {
+  try {
+    const fs = await import("node:fs/promises");
+    // statfs is supported on Linux/macOS Node >= 18.15. On Windows it throws;
+    // we fall back to "assume OK" rather than blocking the bot on dev machines.
+    const statfs = (fs as unknown as { statfs?: (p: string) => Promise<{ bsize: number; bavail: number }> }).statfs;
+    if (!statfs) return true;
+    const s = await statfs(dir);
+    return s.bsize * s.bavail >= minBytes;
+  } catch {
+    return true;
+  }
 }
 
 function parseDuration(s: string): number | null {

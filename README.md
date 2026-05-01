@@ -163,6 +163,8 @@ and static assets are the only public routes.
 | `PUBLIC_BASE_URL` | yes | used in pairing flow and Telegram links |
 | `TELEGRAM_BOT_TOKEN` | for nudges | from [@BotFather](https://t.me/BotFather) |
 | `TELEGRAM_WEBHOOK_SECRET` | for nudges | random; verifies the `X-Telegram-Bot-Api-Secret-Token` header |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_OAUTH_REDIRECT_URL` | for calendar sync | OAuth credentials from Google Cloud Console |
+| `TOKEN_ENCRYPTION_KEY` | with Google sync | 32 random bytes (base64); encrypts Google OAuth tokens at rest. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. After setting it, run `pnpm encrypt:google-tokens` once to migrate any existing plaintext rows. |
 | `ADMIN_PASSWORD` | first boot only | seeds the single user inside the Docker entrypoint |
 | `ADMIN_PASSWORD_HASH` | alternative | bcrypt hash if you don't want to pass plaintext |
 | `ADMIN_DISPLAY_NAME` | optional | default `Baker` |
