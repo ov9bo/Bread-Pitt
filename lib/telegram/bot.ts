@@ -10,8 +10,14 @@ import {
   getNextActions,
   recordObservation,
   snoozeNextReminder,
+  extendStarterMaturity,
+  confirmStarterMature,
 } from "@/lib/processes/engine";
 import { renderTodaySummary, renderStatus } from "./templates";
+
+export type ReplyMarkup = {
+  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
+};
 
 let _bot: Bot | null = null;
 
@@ -99,6 +105,42 @@ function registerCommands(bot: Bot) {
     await ctx.reply(`Snoozed by ${m} min. Next ping at ${r.fireAt.toLocaleTimeString()}.`);
   });
 
+  bot.on("callback_query:data", async (ctx) => {
+    const data = ctx.callbackQuery.data ?? "";
+    const userId = await userIdFromCtx(ctx);
+    if (!userId) {
+      await ctx.answerCallbackQuery({ text: "Pair this chat first.", show_alert: true });
+      return;
+    }
+    const [action, processId] = data.split(":");
+    try {
+      if (action === "confirm" && processId) {
+        await confirmStarterMature(processId, userId);
+        await ctx.answerCallbackQuery({ text: "Float passed — starter is mature." });
+        await ctx.editMessageText(
+          `<b>Starter mature</b>\nMarked complete. Time to bake.`,
+          { parse_mode: "HTML" }
+        );
+      } else if (action === "extend" && processId) {
+        const step = await extendStarterMaturity(processId, userId);
+        await ctx.answerCallbackQuery({ text: "Added another day." });
+        const when = step?.scheduledFor.toLocaleString() ?? "tomorrow";
+        await ctx.editMessageText(
+          `<b>Another day added</b>\nNext check: ${escape(when)}`,
+          { parse_mode: "HTML" }
+        );
+      } else {
+        await ctx.answerCallbackQuery({ text: "Unknown action." });
+      }
+    } catch (e) {
+      console.error("[telegram] callback failed", e);
+      await ctx.answerCallbackQuery({
+        text: "Something went sideways. Try the in-app buttons.",
+        show_alert: true,
+      });
+    }
+  });
+
   bot.on("message:photo", async (ctx) => {
     const userId = await userIdFromCtx(ctx);
     if (!userId) return;
@@ -161,11 +203,27 @@ export function makeWebhookHandler() {
   });
 }
 
-export async function sendMessage(chatId: string, text: string, opts?: { parseMode?: "HTML" | "MarkdownV2" }) {
+export async function sendMessage(
+  chatId: string,
+  text: string,
+  opts?: { parseMode?: "HTML" | "MarkdownV2"; replyMarkup?: ReplyMarkup }
+) {
   const bot = getBot();
   if (!bot) throw new Error("Bot not configured");
   await bot.api.sendMessage(chatId, text, {
     parse_mode: opts?.parseMode ?? "HTML",
     link_preview_options: { is_disabled: true },
+    ...(opts?.replyMarkup ? { reply_markup: opts.replyMarkup } : {}),
   });
+}
+
+export function maturityKeyboard(processId: string): ReplyMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: "Float passed", callback_data: `confirm:${processId}` },
+        { text: "Needs another day", callback_data: `extend:${processId}` },
+      ],
+    ],
+  };
 }

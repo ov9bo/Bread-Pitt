@@ -1,9 +1,9 @@
 import "server-only";
 import cron from "node-cron";
 import { db } from "@/lib/db/client";
-import { reminders, users, preferences } from "@/lib/db/schema";
+import { reminders, users, preferences, processSteps } from "@/lib/db/schema";
 import { and, eq, lte, asc } from "drizzle-orm";
-import { sendMessage } from "@/lib/telegram/bot";
+import { sendMessage, maturityKeyboard } from "@/lib/telegram/bot";
 import { renderReminder } from "@/lib/telegram/templates";
 
 let started = false;
@@ -113,10 +113,30 @@ async function dispatchOne(reminderId: string) {
     return;
   }
 
+  // Attach inline keyboard for maturity-check reminders.
+  let replyMarkup: ReturnType<typeof maturityKeyboard> | undefined;
+  if (r.stepId) {
+    const [step] = await db
+      .select()
+      .from(processSteps)
+      .where(eq(processSteps.id, r.stepId));
+    if (step) {
+      try {
+        const meta = JSON.parse(step.metadataJson || "{}");
+        if (meta.check === "triple-and-float" && r.processId) {
+          replyMarkup = maturityKeyboard(r.processId);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   try {
     await sendMessage(
       user.telegramChatId,
-      renderReminder(r.title, r.body, r.deepLink ?? undefined, process.env.PUBLIC_BASE_URL)
+      renderReminder(r.title, r.body, r.deepLink ?? undefined, process.env.PUBLIC_BASE_URL),
+      replyMarkup ? { replyMarkup } : undefined
     );
     await db
       .update(reminders)

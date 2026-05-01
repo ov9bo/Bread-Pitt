@@ -1,15 +1,15 @@
 services:
-  crustopher:
+  bread-pitt:
     build:
       context: .
       dockerfile: Dockerfile
-    image: crustopher:latest
-    container_name: crustopher
+    image: bread-pitt:latest
+    container_name: bread-pitt
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: file:./data/crustopher.db
+      DATABASE_URL: file:./data/bread-pitt.db
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -25,14 +25,14 @@ services:
     # ports:
     #   - "3000:3000"
     networks:
-      - crustopher
+      - bread-pitt
 
   caddy:
     image: caddy:2-alpine
-    container_name: crustopher-caddy
+    container_name: bread-pitt-caddy
     restart: unless-stopped
     depends_on:
-      - crustopher
+      - bread-pitt
     environment:
       DOMAIN: ${DOMAIN:-localhost}
       ACME_EMAIL: ${ACME_EMAIL:-}
@@ -44,10 +44,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - crustopher
+      - bread-pitt
 
 networks:
-  crustopher:
+  bread-pitt:
 
 volumes:
   caddy_data:

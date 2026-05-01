@@ -17,7 +17,7 @@ import { db } from "@/lib/db/client";
 import { observations, preferences, processes as processesTbl } from "@/lib/db/schema";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { PROCESS_META } from "@/lib/processes/templates";
-import { CompleteStepButton, SnoozeButton, ObservationForm } from "./QuickActions";
+import { CompleteStepButton, SnoozeButton, ObservationForm, MaturityActions } from "./QuickActions";
 import { startOfDay } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function TodayPage() {
   if (!user) redirect("/login");
 
   const [pref] = await db.select().from(preferences).where(eq(preferences.userId, user.id));
-  const starterNickname = pref?.starterNickname ?? "Crustopher";
+  const starterNickname = pref?.starterNickname ?? "The starter";
 
   const [starterInfo, active, next24, dueNow] = await Promise.all([
     getStarterDayInfo(user.id),
@@ -56,6 +56,9 @@ export default async function TodayPage() {
     : [];
 
   const dayIndex = starterInfo?.dayIndex ?? null;
+  const dayCap = starterInfo ? 14 + starterInfo.extensionDays : 14;
+  const maturityStep = starterInfo?.pendingMaturityStep ?? null;
+  const maturityDue = !!maturityStep && maturityStep.scheduledFor.getTime() <= Date.now();
   const empty = active.length === 0;
 
   return (
@@ -70,7 +73,9 @@ export default async function TodayPage() {
 
             <div className="relative">
               <div className="font-display numerals-tabular text-center text-[var(--color-ink-faint)] text-sm tracking-[0.32em] mb-3">
-                {dayIndex !== null ? `DAY ${String(dayIndex).padStart(2, "0")} / 14` : "AT REST"}
+                {dayIndex !== null
+                  ? `DAY ${String(dayIndex).padStart(2, "0")} / ${String(dayCap).padStart(2, "0")}`
+                  : "AT REST"}
               </div>
               <StarterJar
                 dayIndex={dayIndex}
@@ -81,6 +86,17 @@ export default async function TodayPage() {
                     : "No active build"
                 }
               />
+              {maturityDue && starterInfo && (
+                <div className="mt-6 rounded-2xl border border-[var(--color-levain)]/40 bg-[var(--color-levain)]/8 p-4">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--color-levain)] mb-1.5">
+                    Float test
+                  </div>
+                  <p className="text-sm text-[var(--color-ink)] mb-3 text-pretty">
+                    Did the float test pass? If not, {starterNickname} can take another day.
+                  </p>
+                  <MaturityActions processId={starterInfo.process.id} />
+                </div>
+              )}
             </div>
 
             <TodayJournalCard
@@ -106,7 +122,7 @@ export default async function TodayPage() {
             {next24.length === 0 ? (
               <Card tone="ghost" className="px-6 py-10 text-center">
                 <p className="font-display italic text-[var(--color-ink-muted)]">
-                  Quiet day ahead. Crustopher will be in touch.
+                  Quiet day ahead. Bread Pitt will be in touch.
                 </p>
               </Card>
             ) : (

@@ -7,11 +7,11 @@
 
 	# Telegram webhooks must reach the app even on slow rebuilds.
 	@webhook path /api/telegram/webhook
-	reverse_proxy @webhook crustopher:3000 {
+	reverse_proxy @webhook bread-pitt:3000 {
 		flush_interval -1
 	}
 
-	reverse_proxy crustopher:3000
+	reverse_proxy bread-pitt:3000
 
 	tls {$ACME_EMAIL}
 }

@@ -20,10 +20,29 @@ function feedAt(date: Date, anchorHour: number, anchorMinute: number): Date {
   return setMinutes(setHours(startOfDay(date), anchorHour), anchorMinute);
 }
 
+/**
+ * The wall-clock anchor used for starter-build feeds. Day N falls on
+ * `addDays(startedAt, N - 1)` at this hour:minute. Exported so the engine
+ * can compute extension days (Day 15+) consistently.
+ */
+export function starterAnchorTime(startedAt: Date, dayIndex: number): Date {
+  const dayDate = addDays(startedAt, dayIndex - 1);
+  // Days 1-3 + Day 7 + Days 8-14 use the original wall-clock minute-of-day.
+  return new Date(
+    dayDate.getFullYear(),
+    dayDate.getMonth(),
+    dayDate.getDate(),
+    startedAt.getHours(),
+    startedAt.getMinutes(),
+    0,
+    0
+  );
+}
+
 export const starterBuildTemplate: Template = {
   type: "starter_build",
   recipeVersion,
-  defaultNickname: (o) => o.starterNickname || "Crustopher",
+  defaultNickname: (o) => o.starterNickname || "The starter",
   build: ({ startedAt, starterNickname }) => {
     const steps: StepDraft[] = [];
     const reminders: ReminderDraft[] = [];

@@ -407,7 +407,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'Crustopher'"
+          "default": "'The starter'"
         }
       },
       "indexes": {},

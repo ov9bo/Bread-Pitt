@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Wheat, Flame, Refrigerator, Recycle, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -121,7 +121,36 @@ export function ProcessCatalog({ tiles }: { tiles: Tile[]; hasAny: boolean }) {
   );
 }
 
+const OUT_OF_OVEN_OFFSET_MIN = 22 * 60 + 50;
+const FULLY_COOLED_OFFSET_MIN = 25 * 60 + 30;
+
 function StartForm({ tile }: { tile: Tile }) {
+  const isBake = tile.type === "bake_day";
+  const [anchorMode, setAnchorMode] = useState<"start" | "ready">("start");
+  const [targetReadyAt, setTargetReadyAt] = useState<string>("");
+  const [readyMeans, setReadyMeans] = useState<"out_of_oven" | "fully_cooled">("out_of_oven");
+
+  const preview = useMemo(() => {
+    if (!isBake || anchorMode !== "ready" || !targetReadyAt) return null;
+    const ready = new Date(targetReadyAt);
+    if (Number.isNaN(ready.getTime())) return null;
+    const offsetMin =
+      readyMeans === "fully_cooled" ? FULLY_COOLED_OFFSET_MIN : OUT_OF_OVEN_OFFSET_MIN;
+    const T0 = new Date(ready.getTime() - offsetMin * 60_000);
+    const oven = new Date(ready.getTime() - (readyMeans === "fully_cooled" ? FULLY_COOLED_OFFSET_MIN - OUT_OF_OVEN_OFFSET_MIN : 0) * 60_000);
+    const fmt = (d: Date) =>
+      d.toLocaleString([], {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    return {
+      levain: fmt(T0),
+      oven: fmt(oven),
+      ready: fmt(ready),
+    };
+  }, [isBake, anchorMode, targetReadyAt, readyMeans]);
+
   return (
     <form action={startProcessAction} className="space-y-6">
       <input type="hidden" name="type" value={tile.type} />
@@ -140,7 +169,7 @@ function StartForm({ tile }: { tile: Tile }) {
           maxLength={60}
           placeholder={
             tile.type === "starter_build"
-              ? "Crustopher"
+              ? "Bread Pitt"
               : tile.type === "bake_day"
                 ? "Loaf #1"
                 : "Optional"
@@ -149,26 +178,119 @@ function StartForm({ tile }: { tile: Tile }) {
       </FieldGroup>
 
       <FieldGroup>
-        <Label htmlFor="kitchenTempF" hint="Used to time how aggressively your starter rises">
-          Kitchen temperature (°F)
+        <Label htmlFor="kitchenTempC" hint="Used to time how aggressively your starter rises">
+          Kitchen temperature (°C)
         </Label>
         <Input
-          id="kitchenTempF"
-          name="kitchenTempF"
+          id="kitchenTempC"
+          name="kitchenTempC"
           type="number"
-          min={50}
-          max={110}
-          step={1}
-          defaultValue={72}
+          min={10}
+          max={43}
+          step={0.1}
+          defaultValue={25}
         />
       </FieldGroup>
 
-      <FieldGroup>
-        <Label htmlFor="startedAt" hint="Leave blank to start now">
-          Start time
-        </Label>
-        <Input id="startedAt" name="startedAt" type="datetime-local" />
-      </FieldGroup>
+      {isBake && (
+        <FieldGroup>
+          <Label htmlFor="anchorMode" hint="Pick what you want to control">
+            Anchor by
+          </Label>
+          <div className="grid grid-cols-2 gap-2">
+            {(["start", "ready"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAnchorMode(mode)}
+                className={`rounded-2xl border px-4 py-3 text-sm transition-colors ${
+                  anchorMode === mode
+                    ? "border-[var(--color-crust)] bg-[var(--color-crust)]/10 text-[var(--color-ink)]"
+                    : "border-[var(--color-line)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                }`}
+              >
+                {mode === "start" ? "Start time" : "Ready time"}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="anchorMode" value={anchorMode} />
+        </FieldGroup>
+      )}
+
+      {(!isBake || anchorMode === "start") && (
+        <FieldGroup>
+          <Label htmlFor="startedAt" hint="Leave blank to start now">
+            Start time
+          </Label>
+          <Input id="startedAt" name="startedAt" type="datetime-local" />
+        </FieldGroup>
+      )}
+
+      {isBake && anchorMode === "ready" && (
+        <>
+          <FieldGroup>
+            <Label htmlFor="targetReadyAt" hint="Bread Pitt schedules everything backwards from here">
+              Bread ready by
+            </Label>
+            <Input
+              id="targetReadyAt"
+              name="targetReadyAt"
+              type="datetime-local"
+              required
+              value={targetReadyAt}
+              onChange={(e) => setTargetReadyAt(e.target.value)}
+            />
+          </FieldGroup>
+
+          <FieldGroup>
+            <Label htmlFor="readyMeans" hint="Cooled loaves slice better but take ~2.5h longer">
+              Ready means
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { v: "out_of_oven", label: "Out of the oven" },
+                  { v: "fully_cooled", label: "Cooled & sliceable" },
+                ] as const
+              ).map((m) => (
+                <button
+                  key={m.v}
+                  type="button"
+                  onClick={() => setReadyMeans(m.v)}
+                  className={`rounded-2xl border px-4 py-3 text-sm transition-colors ${
+                    readyMeans === m.v
+                      ? "border-[var(--color-crust)] bg-[var(--color-crust)]/10 text-[var(--color-ink)]"
+                      : "border-[var(--color-line)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="readyMeans" value={readyMeans} />
+          </FieldGroup>
+
+          {preview && (
+            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-crumb)]/40 p-4 text-sm space-y-1.5">
+              <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--color-ink-faint)] mb-1">
+                Working backwards
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--color-ink-muted)]">Build the levain</span>
+                <span className="font-mono numerals-tabular text-[var(--color-ink)]">{preview.levain}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--color-ink-muted)]">Out of the oven</span>
+                <span className="font-mono numerals-tabular text-[var(--color-ink)]">{preview.oven}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--color-ink-muted)]">Ready</span>
+                <span className="font-mono numerals-tabular text-[var(--color-crust)]">{preview.ready}</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--color-line-soft)]">
         <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--color-ink-faint)]">

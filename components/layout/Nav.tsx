@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Home, BookOpen, FlaskConical, Wheat, Recycle, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { cn } from "@/lib/utils/cn";
 
 const items = [
@@ -28,14 +29,7 @@ export function Nav({ theme }: { theme: "light" | "dark" }) {
           "px-3 py-2 shadow-[var(--shadow-flour)]",
         )}
       >
-        <Link href="/" className="flex items-center gap-2.5 pl-2 pr-4 group">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-crust)] text-[var(--color-char)] font-display font-bold text-sm shadow-inner">
-            C
-          </span>
-          <span className="font-display text-lg italic tracking-tight text-[var(--color-ink)] group-hover:text-[var(--color-crust)] transition-colors">
-            Crustopher
-          </span>
-        </Link>
+        <Wordmark href="/" size="sm" />
 
         <ul className="hidden md:flex items-center gap-1">
           {items.map(({ href, label, icon: Icon }) => {

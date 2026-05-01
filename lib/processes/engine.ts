@@ -11,6 +11,16 @@ import {
 } from "@/lib/db/schema";
 import { TEMPLATES } from "./templates";
 import { and, eq, asc, desc, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { starterAnchorTime } from "./templates/starter-build";
+import {
+  syncProcessOnStart,
+  syncProcessOnPause,
+  syncProcessOnResume,
+  syncStepCompleted,
+  syncStepCancelled,
+  syncProcessCancelled,
+  syncStepUpserted,
+} from "@/lib/google/sync";
 
 type StartOptions = {
   userId: string;
@@ -28,7 +38,7 @@ export async function startProcess(opts: StartOptions) {
 
   const [pref] = await db.select().from(preferences).where(eq(preferences.userId, opts.userId));
   const tempF = opts.kitchenTempF ?? pref?.kitchenTempF ?? 72;
-  const starterNickname = pref?.starterNickname ?? "Crustopher";
+  const starterNickname = pref?.starterNickname ?? "The starter";
 
   const template = TEMPLATES[opts.type];
   if (!template) throw new Error(`Unknown process type: ${opts.type}`);
@@ -95,6 +105,10 @@ export async function startProcess(opts: StartOptions) {
     );
   }
 
+  await syncProcessOnStart(opts.userId, proc.id).catch((e) =>
+    console.error("[engine] gcal sync on start failed", e)
+  );
+
   return proc;
 }
 
@@ -108,6 +122,10 @@ export async function pauseProcess(processId: string) {
     .update(reminders)
     .set({ status: "cancelled" })
     .where(and(eq(reminders.processId, processId), eq(reminders.status, "pending")));
+
+  await syncProcessOnPause(processId).catch((e) =>
+    console.error("[engine] gcal sync on pause failed", e)
+  );
 }
 
 export async function resumeProcess(processId: string) {
@@ -141,6 +159,10 @@ export async function resumeProcess(processId: string) {
       .set({ status: "pending", fireAt: new Date(r.fireAt.getTime() + elapsedMs) })
       .where(eq(reminders.id, r.id));
   }
+
+  await syncProcessOnResume(processId).catch((e) =>
+    console.error("[engine] gcal sync on resume failed", e)
+  );
 }
 
 export async function restartProcess(processId: string) {
@@ -181,6 +203,10 @@ export async function abandonProcess(processId: string) {
     .update(reminders)
     .set({ status: "cancelled" })
     .where(and(eq(reminders.processId, processId), eq(reminders.status, "pending")));
+
+  await syncProcessCancelled(processId).catch((e) =>
+    console.error("[engine] gcal sync on abandon failed", e)
+  );
 }
 
 export async function completeStep(stepId: string, note?: string) {
@@ -206,6 +232,10 @@ export async function completeStep(stepId: string, note?: string) {
     .update(reminders)
     .set({ status: "cancelled" })
     .where(and(eq(reminders.stepId, stepId), eq(reminders.status, "pending")));
+
+  await syncStepCompleted(stepId).catch((e) =>
+    console.error("[engine] gcal sync on completeStep failed", e)
+  );
 
   // If all steps complete, mark process complete
   const remaining = await db
@@ -238,6 +268,10 @@ export async function skipStep(stepId: string, reason?: string) {
     .update(reminders)
     .set({ status: "cancelled" })
     .where(and(eq(reminders.stepId, stepId), eq(reminders.status, "pending")));
+
+  await syncStepCancelled(stepId).catch((e) =>
+    console.error("[engine] gcal sync on skipStep failed", e)
+  );
   return step ?? null;
 }
 
@@ -358,6 +392,133 @@ export async function recordObservation(input: {
   return row;
 }
 
+// ─── Starter maturity extension ───────────────────────────────────────────
+
+/**
+ * Append one extra "Day N" feed step + reminder when the starter wasn't
+ * mature at the previous checkpoint. Repeatable: each call extends by
+ * one more day. Returns the new step + reminder, or null if not applicable.
+ */
+export async function extendStarterMaturity(processId: string, userId: string) {
+  const [proc] = await db.select().from(processes).where(eq(processes.id, processId));
+  if (!proc) throw new Error("Process not found");
+  if (proc.userId !== userId) throw new Error("Forbidden");
+  if (proc.type !== "starter_build") throw new Error("Not a starter build");
+  if (proc.status !== "active") throw new Error("Process is not active");
+
+  const [pref] = await db.select().from(preferences).where(eq(preferences.userId, userId));
+  const starterNickname = pref?.starterNickname ?? "The starter";
+
+  const nextDayIndex = 14 + proc.extensionDays + 1;
+  const anchor = starterAnchorTime(proc.startedAt, nextDayIndex);
+
+  // Mark prior maturity step as deferred (if still incomplete)
+  const [priorStep] = await db
+    .select()
+    .from(processSteps)
+    .where(and(eq(processSteps.processId, processId), eq(processSteps.dayIndex, nextDayIndex - 1)))
+    .orderBy(desc(processSteps.ordinal))
+    .limit(1);
+  if (priorStep && !priorStep.completedAt) {
+    await db
+      .update(processSteps)
+      .set({
+        completedAt: new Date(),
+        skipped: false,
+        skippedReason: "deferred — needs another day",
+      })
+      .where(eq(processSteps.id, priorStep.id));
+    await db
+      .update(reminders)
+      .set({ status: "cancelled" })
+      .where(and(eq(reminders.stepId, priorStep.id), eq(reminders.status, "pending")));
+  }
+
+  const [maxOrdinalRow] = await db
+    .select({ m: sql<number>`max(${processSteps.ordinal})` })
+    .from(processSteps)
+    .where(eq(processSteps.processId, processId));
+  const nextOrdinal = (maxOrdinalRow?.m ?? 0) + 1;
+
+  const stepKey = `day-${nextDayIndex}-extension`;
+  const title = `Day ${nextDayIndex} — Extra feed`;
+  const description = `${starterNickname} needs another day. One feed: discard to 75g, then 40g bread + 20g WW + 60g water. Re-check the float test in 4–6h.`;
+
+  const [newStep] = await db
+    .insert(processSteps)
+    .values({
+      processId,
+      stepKey,
+      title,
+      description,
+      ordinal: nextOrdinal,
+      dayIndex: nextDayIndex,
+      scheduledFor: anchor,
+      metadataJson: JSON.stringify({ check: "triple-and-float", extension: true }),
+    })
+    .returning();
+
+  await db.insert(reminders).values({
+    userId,
+    processId,
+    stepId: newStep.id,
+    fireAt: anchor,
+    title: `${starterNickname} — Day ${nextDayIndex} extra feed`,
+    body: "Float test didn't pass yesterday. Feed once today (75g + 40/20/60), re-check in 4–6h.",
+    deepLink: `/journal/${processId}#${newStep.id}`,
+  });
+
+  await db
+    .update(processes)
+    .set({ extensionDays: proc.extensionDays + 1 })
+    .where(eq(processes.id, processId));
+
+  await syncStepUpserted(newStep.id).catch((e) =>
+    console.error("[engine] gcal sync on extendStarterMaturity failed", e)
+  );
+
+  return newStep;
+}
+
+/**
+ * Confirm the starter passed the float test. Marks the most recent maturity
+ * step complete and the process as completed.
+ */
+export async function confirmStarterMature(processId: string, userId: string, note?: string) {
+  const [proc] = await db.select().from(processes).where(eq(processes.id, processId));
+  if (!proc) throw new Error("Process not found");
+  if (proc.userId !== userId) throw new Error("Forbidden");
+  if (proc.type !== "starter_build") throw new Error("Not a starter build");
+
+  const checkpointDay = 14 + proc.extensionDays;
+  const [step] = await db
+    .select()
+    .from(processSteps)
+    .where(and(eq(processSteps.processId, processId), eq(processSteps.dayIndex, checkpointDay)))
+    .orderBy(desc(processSteps.ordinal))
+    .limit(1);
+
+  if (step && !step.completedAt) {
+    await completeStep(step.id, note ?? "Float test passed — starter mature");
+  }
+
+  await db
+    .update(processes)
+    .set({ status: "completed", completedAt: new Date(), notes: note ?? null })
+    .where(eq(processes.id, processId));
+
+  await db
+    .update(reminders)
+    .set({ status: "cancelled" })
+    .where(and(eq(reminders.processId, processId), eq(reminders.status, "pending")));
+
+  await syncProcessCancelled(processId).catch((e) =>
+    console.error("[engine] gcal sync on confirmStarterMature failed", e)
+  );
+
+  return step ?? null;
+}
+
 export async function getStarterDayInfo(userId: string) {
   const [active] = await db
     .select()
@@ -374,6 +535,37 @@ export async function getStarterDayInfo(userId: string) {
   if (!active) return null;
 
   const dayMs = 24 * 60 * 60 * 1000;
-  const dayIndex = Math.min(14, Math.floor((Date.now() - active.startedAt.getTime()) / dayMs) + 1);
-  return { process: active, dayIndex };
+  const cap = 14 + active.extensionDays;
+  const dayIndex = Math.min(cap, Math.floor((Date.now() - active.startedAt.getTime()) / dayMs) + 1);
+
+  // Surface a pending maturity-check step so the UI can show extend/confirm buttons.
+  const [maturityStep] = await db
+    .select()
+    .from(processSteps)
+    .where(
+      and(
+        eq(processSteps.processId, active.id),
+        isNull(processSteps.completedAt),
+        eq(processSteps.skipped, false)
+      )
+    )
+    .orderBy(desc(processSteps.ordinal))
+    .limit(1);
+
+  let pendingMaturityStep: typeof maturityStep | null = null;
+  if (maturityStep) {
+    try {
+      const meta = JSON.parse(maturityStep.metadataJson || "{}");
+      if (meta.check === "triple-and-float") pendingMaturityStep = maturityStep;
+    } catch {
+      // ignore
+    }
+  }
+
+  return {
+    process: active,
+    dayIndex,
+    extensionDays: active.extensionDays,
+    pendingMaturityStep,
+  };
 }

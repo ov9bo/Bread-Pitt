@@ -13,14 +13,21 @@ import {
   completeStep,
   skipStep,
   recordObservation,
+  extendStarterMaturity,
+  confirmStarterMature,
 } from "@/lib/processes/engine";
 import { requireUser } from "@/lib/auth/session";
+const cToF = (c: number) => (c * 9) / 5 + 32;
 
 const StartSchema = z.object({
   type: z.enum(processTypes),
   nickname: z.string().trim().max(60).optional(),
-  kitchenTempF: z.coerce.number().min(50).max(110).optional(),
+  kitchenTempC: z.coerce.number().min(10).max(43).optional(),
   startedAt: z.string().optional(),
+  // Bake-day "anchor by ready time" knobs
+  anchorMode: z.enum(["start", "ready"]).optional(),
+  targetReadyAt: z.string().optional(),
+  readyMeans: z.enum(["out_of_oven", "fully_cooled"]).optional(),
 });
 
 export async function startProcessAction(formData: FormData) {
@@ -30,18 +37,38 @@ export async function startProcessAction(formData: FormData) {
   const parsed = StartSchema.safeParse({
     type: formData.get("type"),
     nickname: formData.get("nickname") || undefined,
-    kitchenTempF: formData.get("kitchenTempF") || undefined,
+    kitchenTempC: formData.get("kitchenTempC") || undefined,
     startedAt: formData.get("startedAt") || undefined,
+    anchorMode: formData.get("anchorMode") || undefined,
+    targetReadyAt: formData.get("targetReadyAt") || undefined,
+    readyMeans: formData.get("readyMeans") || undefined,
   });
   if (!parsed.success) throw new Error("Invalid form data");
 
-  const startedAt = parsed.data.startedAt ? new Date(parsed.data.startedAt) : new Date();
+  const options: Record<string, unknown> = {};
+  let startedAt = parsed.data.startedAt ? new Date(parsed.data.startedAt) : new Date();
+  if (parsed.data.type === "bake_day") {
+    if (parsed.data.anchorMode === "ready" && parsed.data.targetReadyAt) {
+      const target = new Date(parsed.data.targetReadyAt);
+      const offsetMin = parsed.data.readyMeans === "fully_cooled" ? 25 * 60 + 30 : 22 * 60 + 50;
+      // Set the process's startedAt to the computed T0 so all consumers agree.
+      startedAt = new Date(target.getTime() - offsetMin * 60_000);
+      options.anchorMode = "ready";
+      options.targetReadyAt = target.toISOString();
+      options.readyMeans = parsed.data.readyMeans ?? "out_of_oven";
+    } else {
+      options.anchorMode = "start";
+    }
+  }
+
   const proc = await startProcess({
     userId: user.id,
     type: parsed.data.type,
     nickname: parsed.data.nickname,
-    kitchenTempF: parsed.data.kitchenTempF,
+    kitchenTempF:
+      parsed.data.kitchenTempC === undefined ? undefined : cToF(parsed.data.kitchenTempC),
     startedAt,
+    options,
   });
 
   revalidatePath("/");
@@ -128,4 +155,22 @@ export async function recordObservationAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath(`/journal/${parsed.data.processId}`);
+}
+
+export async function extendStarterMaturityAction(processId: string) {
+  const user = await requireUser();
+  if (!user) redirect("/login");
+  await extendStarterMaturity(processId, user.id);
+  revalidatePath("/");
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${processId}`);
+}
+
+export async function confirmStarterMatureAction(processId: string, note?: string) {
+  const user = await requireUser();
+  if (!user) redirect("/login");
+  await confirmStarterMature(processId, user.id, note);
+  revalidatePath("/");
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${processId}`);
 }

@@ -62,7 +62,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     tini \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r crustopher && useradd -r -g crustopher -d /app crustopher
+    && groupadd -r breadpitt && useradd -r -g breadpitt -d /app breadpitt
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -70,32 +70,32 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 
 # Standalone server (Next assembles the minimal node_modules itself).
-COPY --from=build --chown=crustopher:crustopher /app/.next/standalone ./
-COPY --from=build --chown=crustopher:crustopher /app/.next/static ./.next/static
-COPY --from=build --chown=crustopher:crustopher /app/public ./public
+COPY --from=build --chown=breadpitt:breadpitt /app/.next/standalone ./
+COPY --from=build --chown=breadpitt:breadpitt /app/.next/static ./.next/static
+COPY --from=build --chown=breadpitt:breadpitt /app/public ./public
 
 # Drizzle migrations + scripts run via tsx at boot — copy what we need outside standalone.
-COPY --from=build --chown=crustopher:crustopher /app/drizzle ./drizzle
-COPY --from=build --chown=crustopher:crustopher /app/scripts ./scripts
-COPY --from=build --chown=crustopher:crustopher /app/lib ./lib
-COPY --from=build --chown=crustopher:crustopher /app/tsconfig.json ./tsconfig.json
-COPY --from=build --chown=crustopher:crustopher /app/package.json ./package.json
+COPY --from=build --chown=breadpitt:breadpitt /app/drizzle ./drizzle
+COPY --from=build --chown=breadpitt:breadpitt /app/scripts ./scripts
+COPY --from=build --chown=breadpitt:breadpitt /app/lib ./lib
+COPY --from=build --chown=breadpitt:breadpitt /app/tsconfig.json ./tsconfig.json
+COPY --from=build --chown=breadpitt:breadpitt /app/package.json ./package.json
 # Pruned production node_modules for migration scripts (better-sqlite3, drizzle, tsx, etc).
-COPY --from=build --chown=crustopher:crustopher /app/node_modules ./node_modules
+COPY --from=build --chown=breadpitt:breadpitt /app/node_modules ./node_modules
 
 # Knowledge source — read at boot by lib/knowledge/parse.ts from cwd.
-COPY --from=build --chown=crustopher:crustopher /app/sourdough_complete_guide.md ./sourdough_complete_guide.md
-COPY --from=build --chown=crustopher:crustopher /app/sourdough_discard_and_starter_care.md ./sourdough_discard_and_starter_care.md
+COPY --from=build --chown=breadpitt:breadpitt /app/sourdough_complete_guide.md ./sourdough_complete_guide.md
+COPY --from=build --chown=breadpitt:breadpitt /app/sourdough_discard_and_starter_care.md ./sourdough_discard_and_starter_care.md
 
 # Entrypoint runs migrations + knowledge sync, then hands off to the standalone server.
-COPY --chown=crustopher:crustopher docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=breadpitt:breadpitt docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Persistent data: SQLite + uploads + backups.
-RUN mkdir -p data data/uploads data/backups && chown -R crustopher:crustopher data
+RUN mkdir -p data data/uploads data/backups && chown -R breadpitt:breadpitt data
 VOLUME ["/app/data"]
 
-USER crustopher
+USER breadpitt
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

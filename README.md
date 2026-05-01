@@ -1,4 +1,4 @@
-# Crustopher
+# Bread Pitt
 
 A personal sourdough companion. Track a starter from Day 1, run a bake-day
 timeline, mind the discard jar, and get gentle Telegram nudges when something
@@ -49,7 +49,7 @@ Open <http://localhost:3000>, log in, and start a process from `/processes`.
 
 ## How the application works
 
-Crustopher is built around five ideas. Knowing them makes the rest of the UI
+Bread Pitt is built around five ideas. Knowing them makes the rest of the UI
 feel inevitable.
 
 ### 1. The two markdown files are the source of truth
@@ -159,7 +159,7 @@ and static assets are the only public routes.
 | name | required | notes |
 | --- | --- | --- |
 | `SESSION_SECRET` | yes | 32+ bytes of hex; rotating it invalidates sessions |
-| `DATABASE_URL` | yes | for SQLite this is metadata only — actual path is `data/crustopher.db` |
+| `DATABASE_URL` | yes | for SQLite this is metadata only — actual path is `data/bread-pitt.db` |
 | `PUBLIC_BASE_URL` | yes | used in pairing flow and Telegram links |
 | `TELEGRAM_BOT_TOKEN` | for nudges | from [@BotFather](https://t.me/BotFather) |
 | `TELEGRAM_WEBHOOK_SECRET` | for nudges | random; verifies the `X-Telegram-Bot-Api-Secret-Token` header |
@@ -183,7 +183,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | Edit the schema | edit `lib/db/schema.ts` → `pnpm db:generate` → `pnpm db:migrate` |
 | Edit the guides | edit the two `.md` files → `pnpm knowledge:sync` |
 | Add a new process type | drop a template in `lib/processes/templates/` and register it in `engine.ts` |
-| Reset everything locally | delete `data/crustopher.db*` and re-run steps 3–5 of Quick start |
+| Reset everything locally | delete `data/bread-pitt.db*` and re-run steps 3–5 of Quick start |
 | Inspect the DB | `pnpm db:studio` |
 | Type-check | `npx tsc --noEmit` |
 
@@ -198,10 +198,10 @@ non-root user, uses `tini` as PID 1, and exposes a healthcheck against
 ```bash
 # 1. Create the env the compose stack reads:
 cat > .env <<EOF
-DOMAIN=crustopher.example.com
+DOMAIN=bread-pitt.example.com
 ACME_EMAIL=you@example.com
 SESSION_SECRET=$(openssl rand -hex 32)
-PUBLIC_BASE_URL=https://crustopher.example.com
+PUBLIC_BASE_URL=https://bread-pitt.example.com
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=$(openssl rand -hex 16)
 ADMIN_PASSWORD=changeme-on-first-boot
@@ -212,7 +212,7 @@ EOF
 docker compose up -d --build
 
 # 3. Tail logs to confirm migrations + knowledge sync ran:
-docker compose logs -f crustopher
+docker compose logs -f bread-pitt
 ```
 
 `docker/entrypoint.sh` runs migrations, syncs knowledge, optionally seeds the
@@ -222,7 +222,7 @@ just `git pull && docker compose up -d --build`.
 
 Caddy fronts the app, terminates TLS for `$DOMAIN`, and reverse-proxies to the
 container. To run without Caddy, comment out the `caddy` service in
-`docker-compose.yml` and uncomment the `ports:` block on the `crustopher`
+`docker-compose.yml` and uncomment the `ports:` block on the `bread-pitt`
 service.
 
 ### Telegram webhook (one-time, after the public domain is reachable)
@@ -242,11 +242,11 @@ Then pair your account in `/settings`.
 files older than `RETAIN_DAYS` (default 14).
 
 ```cron
-0 3 * * * cd /opt/crustopher && ./scripts/backup.sh >> data/backups/backup.log 2>&1
+0 3 * * * cd /opt/bread-pitt && ./scripts/backup.sh >> data/backups/backup.log 2>&1
 ```
 
 To restore: `gunzip` the snapshot, `docker compose down`, replace
-`data/crustopher.db`, `docker compose up -d`.
+`data/bread-pitt.db`, `docker compose up -d`.
 
 ---
 

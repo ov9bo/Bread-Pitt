@@ -23,11 +23,11 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crustopher — your sourdough companion",
+  title: "Bread Pitt — your sourdough companion",
   description:
     "A hand-bound journal for living, breathing bread. Track your starter, your folds, your bakes.",
-  applicationName: "Crustopher",
-  authors: [{ name: "Crustopher" }],
+  applicationName: "Bread Pitt",
+  authors: [{ name: "Bread Pitt" }],
 };
 
 export const viewport: Viewport = {
@@ -43,7 +43,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const theme = (cookieStore.get("crustopher_theme")?.value as "light" | "dark") ?? "dark";
+  const theme = (cookieStore.get("bread_pitt_theme")?.value as "light" | "dark") ?? "dark";
 
   return (
     <html

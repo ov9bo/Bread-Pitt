@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import * as schema from "./schema";
 
-const dbPath = resolve(process.cwd(), "data", "crustopher.db");
+const dbPath = resolve(process.cwd(), "data", "bread-pitt.db");
 mkdirSync(dirname(dbPath), { recursive: true });
 
 const sqlite = new Database(dbPath);

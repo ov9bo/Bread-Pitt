@@ -68,7 +68,7 @@ Before you begin Day 1, gather:
 
 > **Why 14 days?** A starter only develops the wild yeast strength and lactic-acid bacteria balance needed to leaven bread after about two weeks of consistent feeding. Before that, the rise won't be reliable and the flavor will be flat.
 
-> **Pick a name.** Nick named his "Crustopher" (after his dad Chris, a sourdough baker). Naming sounds silly, but it reinforces the idea that you're tending a living culture.
+> **Pick a name.** Nick named his "Bread Pitt" (after his dad Chris, a sourdough baker). Naming sounds silly, but it reinforces the idea that you're tending a living culture.
 
 ---
 

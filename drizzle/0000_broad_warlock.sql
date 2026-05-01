@@ -56,7 +56,7 @@ CREATE TABLE `preferences` (
 	`notifications_enabled` integer DEFAULT true NOT NULL,
 	`quiet_hours_start` integer DEFAULT 22 NOT NULL,
 	`quiet_hours_end` integer DEFAULT 7 NOT NULL,
-	`starter_nickname` text DEFAULT 'Crustopher' NOT NULL,
+	`starter_nickname` text DEFAULT 'The starter' NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

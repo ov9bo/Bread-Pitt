@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const PUBLIC_ROUTES = ["/login", "/setup", "/api/telegram/webhook", "/api/health"];
-const SESSION_COOKIE = "crustopher_session";
+const SESSION_COOKIE = "bread_pitt_session";
 
 function secret() {
   const s = process.env.SESSION_SECRET;

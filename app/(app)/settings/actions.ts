@@ -10,11 +10,15 @@ import { destroySession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import { preferences, users } from "@/lib/db/schema";
 import { generatePairingCode, unlinkTelegram } from "@/lib/telegram/pairing";
+import { revokeAndDelete } from "@/lib/google/oauth";
+import { syncProcessCancelled } from "@/lib/google/sync";
+import { processes as processesTable } from "@/lib/db/schema";
+const cToF = (c: number) => (c * 9) / 5 + 32;
 
 const prefsSchema = z.object({
   starterNickname: z.string().min(1).max(40),
   displayName: z.string().min(1).max(40),
-  kitchenTempF: z.coerce.number().min(50).max(110),
+  kitchenTempC: z.coerce.number().min(10).max(43),
   notificationsEnabled: z
     .union([z.literal("on"), z.literal("off"), z.string()])
     .transform((v) => v === "on"),
@@ -29,7 +33,7 @@ export async function savePreferencesAction(formData: FormData) {
   const parsed = prefsSchema.parse({
     starterNickname: formData.get("starterNickname"),
     displayName: formData.get("displayName"),
-    kitchenTempF: formData.get("kitchenTempF"),
+    kitchenTempC: formData.get("kitchenTempC"),
     notificationsEnabled: formData.get("notificationsEnabled") ?? "off",
     quietHoursStart: formData.get("quietHoursStart"),
     quietHoursEnd: formData.get("quietHoursEnd"),
@@ -51,7 +55,7 @@ export async function savePreferencesAction(formData: FormData) {
       .update(preferences)
       .set({
         starterNickname: parsed.starterNickname,
-        kitchenTempF: parsed.kitchenTempF,
+        kitchenTempF: cToF(parsed.kitchenTempC),
         notificationsEnabled: parsed.notificationsEnabled,
         quietHoursStart: parsed.quietHoursStart,
         quietHoursEnd: parsed.quietHoursEnd,
@@ -61,7 +65,7 @@ export async function savePreferencesAction(formData: FormData) {
     await db.insert(preferences).values({
       userId: user.id,
       starterNickname: parsed.starterNickname,
-      kitchenTempF: parsed.kitchenTempF,
+      kitchenTempF: cToF(parsed.kitchenTempC),
       notificationsEnabled: parsed.notificationsEnabled,
       quietHoursStart: parsed.quietHoursStart,
       quietHoursEnd: parsed.quietHoursEnd,
@@ -119,4 +123,47 @@ export async function unlinkTelegramAction() {
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+export async function disconnectGoogleAction() {
+  const user = await requireUser();
+  if (!user) redirect("/login");
+
+  // Cancel all active calendar events for this user's active processes first.
+  const active = await db
+    .select()
+    .from(processesTable)
+    .where(eq(processesTable.userId, user.id));
+  for (const p of active) {
+    try {
+      await syncProcessCancelled(p.id);
+    } catch (e) {
+      console.error("[google] failed to cancel events for", p.id, e);
+    }
+  }
+
+  await revokeAndDelete(user.id);
+  revalidatePath("/settings");
+}
+
+export async function setGoogleSyncEnabledAction(enabled: boolean) {
+  const user = await requireUser();
+  if (!user) redirect("/login");
+
+  const [existing] = await db
+    .select()
+    .from(preferences)
+    .where(eq(preferences.userId, user.id));
+  if (existing) {
+    await db
+      .update(preferences)
+      .set({ googleCalendarSyncEnabled: enabled })
+      .where(eq(preferences.userId, user.id));
+  } else {
+    await db.insert(preferences).values({
+      userId: user.id,
+      googleCalendarSyncEnabled: enabled,
+    });
+  }
+  revalidatePath("/settings");
 }

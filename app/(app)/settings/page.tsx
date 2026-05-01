@@ -1,20 +1,27 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { Bell, KeyRound, LogOut, MessageCircle, ThermometerSun } from "lucide-react";
+import { Bell, Calendar, KeyRound, LogOut, MessageCircle, ThermometerSun } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
-import { preferences } from "@/lib/db/schema";
+import { googleAccounts, preferences } from "@/lib/db/schema";
 import { Card, CardEyebrow } from "@/components/ui/Card";
 import { Input, Label, FieldGroup } from "@/components/ui/Input";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { savePreferencesAction, logoutAction } from "./actions";
 import { TelegramPanel } from "./TelegramPanel";
 import { PasswordPanel } from "./PasswordPanel";
+import { GoogleCalendarPanel } from "./GoogleCalendarPanel";
+import { googleConfigured } from "@/lib/google/oauth";
 import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
+const fToC = (f: number) => ((f - 32) * 5) / 9;
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
   if (!user) redirect("/login");
 
@@ -28,6 +35,15 @@ export default async function SettingsPage() {
     !!user.telegramPairingCode &&
     !!user.telegramPairingExpiresAt &&
     user.telegramPairingExpiresAt.getTime() > Date.now();
+
+  const [googleAccount] = await db
+    .select()
+    .from(googleAccounts)
+    .where(eq(googleAccounts.userId, user.id));
+  const params = await searchParams;
+  const googleParam = typeof params.google === "string" ? params.google : null;
+  const backfilledParam = typeof params.backfilled === "string" ? params.backfilled : null;
+  const reasonParam = typeof params.reason === "string" ? params.reason : null;
 
   return (
     <>
@@ -74,24 +90,24 @@ export default async function SettingsPage() {
                 <Input
                   id="starterNickname"
                   name="starterNickname"
-                  defaultValue={pref?.starterNickname ?? "Crustopher"}
+                  defaultValue={pref?.starterNickname ?? "The starter"}
                   required
                   maxLength={40}
                 />
               </FieldGroup>
 
               <FieldGroup>
-                <Label htmlFor="kitchenTempF" hint="Used to time fermentation.">
-                  Kitchen temperature (°F)
+                <Label htmlFor="kitchenTempC" hint="Used to time fermentation.">
+                  Kitchen temperature (°C)
                 </Label>
                 <Input
-                  id="kitchenTempF"
-                  name="kitchenTempF"
+                  id="kitchenTempC"
+                  name="kitchenTempC"
                   type="number"
-                  min={50}
-                  max={110}
+                  min={10}
+                  max={43}
                   step="0.1"
-                  defaultValue={pref?.kitchenTempF ?? 72}
+                  defaultValue={pref?.kitchenTempF ? Number(fToC(pref.kitchenTempF).toFixed(1)) : 25}
                   className="numerals-tabular"
                   required
                 />
@@ -160,7 +176,7 @@ export default async function SettingsPage() {
               </div>
               <h2 className="font-display text-2xl mt-1 mb-2">Telegram pairing</h2>
               <p className="text-sm text-[var(--color-ink-muted)] mb-6 text-pretty">
-                Crustopher will message you when something needs you — a feed, a fold, a check-in.
+                Bread Pitt will message you when something needs you — a feed, a fold, a check-in.
                 Pair once and it's done.
               </p>
 
@@ -169,6 +185,36 @@ export default async function SettingsPage() {
                 pairingCode={pairingActive ? user.telegramPairingCode : null}
                 pairingExpiresAt={
                   pairingActive ? user.telegramPairingExpiresAt?.toISOString() ?? null : null
+                }
+              />
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.08}>
+            <Card tone="flour" className="p-7">
+              <div className="flex items-center gap-2.5 mb-1">
+                <Calendar size={14} className="text-[var(--color-crust)]" />
+                <CardEyebrow>The calendar</CardEyebrow>
+              </div>
+              <h2 className="font-display text-2xl mt-1 mb-2">Google Calendar</h2>
+              <p className="text-sm text-[var(--color-ink-muted)] mb-6 text-pretty">
+                Optional — push every step of every active process to a
+                dedicated <em>Bread Pitt</em> calendar in your Google account.
+              </p>
+              <GoogleCalendarPanel
+                configured={googleConfigured()}
+                connected={!!googleAccount}
+                email={googleAccount?.email ?? null}
+                syncEnabled={pref?.googleCalendarSyncEnabled ?? true}
+                backfilled={
+                  googleParam === "connected" && backfilledParam
+                    ? Number(backfilledParam) || 0
+                    : null
+                }
+                errorReason={
+                  googleParam === "error" || googleParam === "bad_state" || googleParam === "missing_params"
+                    ? reasonParam ?? googleParam
+                    : null
                 }
               />
             </Card>

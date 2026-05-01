@@ -172,7 +172,7 @@ export function StarterJar({ dayIndex, nickname, caption, className }: Props) {
             fontStyle="italic"
             fill="var(--color-ink)"
           >
-            {nickname ?? "Crustopher"}
+            {nickname ?? "The starter"}
           </text>
           <line x1="14" y1="28" x2="96" y2="28" stroke="var(--color-line)" strokeWidth="0.5" />
           <text

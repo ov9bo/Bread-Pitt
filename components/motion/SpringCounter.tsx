@@ -30,7 +30,7 @@ export function SpringCounter({
 
 /**
  * Live countdown — accepts a target Date and renders HH:MM:SS, ticking
- * every second. Stops at zero. Used for "Feed Crustopher in 03:42:11".
+ * every second. Stops at zero. Used for "Feed Bread Pitt in 03:42:11".
  */
 export function Countdown({
   to,

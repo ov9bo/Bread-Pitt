@@ -6,7 +6,7 @@ import { db } from "@/lib/db/client";
 import { users, sessions } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 
-const SESSION_COOKIE = "crustopher_session";
+const SESSION_COOKIE = "bread_pitt_session";
 const SESSION_TTL_DAYS = 30;
 
 function secret() {

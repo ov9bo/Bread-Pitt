@@ -44,7 +44,9 @@ export function PasswordPanel() {
           <Input id="next" name="next" type="password" autoComplete="new-password" minLength={8} required />
         </FieldGroup>
         <FieldGroup>
-          <Label htmlFor="confirm">Confirm new</Label>
+          <Label htmlFor="confirm" hint="At least 8 characters.">
+            Confirm new
+          </Label>
           <Input
             id="confirm"
             name="confirm"

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Bell, Plus, X } from "lucide-react";
+import { Check, Bell, Plus, X, CalendarPlus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Label, FieldGroup } from "@/components/ui/Input";
 import {
@@ -13,6 +13,8 @@ import {
   restartProcessAction,
   abandonProcessAction,
   skipStepAction,
+  extendStarterMaturityAction,
+  confirmStarterMatureAction,
 } from "./processes/actions";
 import { snoozeNextReminderAction } from "./snooze-action";
 
@@ -98,6 +100,43 @@ export function RestartButton({ processId }: { processId: string }) {
     >
       Restart
     </Button>
+  );
+}
+
+export function MaturityActions({ processId }: { processId: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button
+        size="sm"
+        disabled={pending}
+        onClick={() =>
+          start(() =>
+            confirmStarterMatureAction(processId).catch((e) => {
+              console.error(e);
+              alert("Could not confirm maturity. Try again.");
+            })
+          )
+        }
+      >
+        <Sparkles size={14} /> Float passed — ready to bake
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={pending}
+        onClick={() =>
+          start(() =>
+            extendStarterMaturityAction(processId).catch((e) => {
+              console.error(e);
+              alert("Could not add another day. Try again.");
+            })
+          )
+        }
+      >
+        <CalendarPlus size={14} /> Needs another day
+      </Button>
+    </div>
   );
 }
 

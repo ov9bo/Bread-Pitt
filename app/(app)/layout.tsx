@@ -5,7 +5,7 @@ import { LenisProvider } from "@/components/motion/LenisProvider";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
-  const theme = (jar.get("crustopher_theme")?.value as "light" | "dark") ?? "dark";
+  const theme = (jar.get("bread_pitt_theme")?.value as "light" | "dark") ?? "dark";
 
   return (
     <>

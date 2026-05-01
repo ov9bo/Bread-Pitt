@@ -43,7 +43,7 @@ export function TelegramPanel({
           <div className="text-sm">
             <div className="text-[var(--color-ink)]">Paired and listening.</div>
             <div className="text-xs text-[var(--color-ink-muted)] mt-0.5">
-              Crustopher will message at the right moments.
+              Bread Pitt will message at the right moments.
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ export function TelegramPanel({
             className="space-y-4"
           >
             <p className="text-sm text-[var(--color-ink-muted)]">
-              Generate a one-time code, send it to your bot, and Crustopher will
+              Generate a one-time code, send it to your bot, and Bread Pitt will
               know where to find you. Codes expire after 15 minutes.
             </p>
             <Button size="md" disabled={pending} onClick={generate}>

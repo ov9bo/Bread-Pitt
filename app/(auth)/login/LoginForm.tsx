@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { motion } from "framer-motion";
-import { Wheat, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { login, type LoginState } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, FieldGroup } from "@/components/ui/Input";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 const initial: LoginState = {};
 
@@ -19,14 +20,9 @@ export function LoginForm({ next }: { next: string }) {
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       className="w-full max-w-md"
     >
-      <div className="mb-8 text-center">
-        <div className="mb-4 inline-grid h-14 w-14 place-items-center rounded-full bg-[var(--color-crust)]/15 border border-[var(--color-crust)]/30">
-          <Wheat size={22} className="text-[var(--color-crust)]" />
-        </div>
-        <h1 className="font-display text-4xl text-balance text-[var(--color-ink)]">
-          Welcome back to <span className="italic text-[var(--color-crust)]">Crustopher</span>
-        </h1>
-        <p className="mt-3 font-display italic text-[var(--color-ink-muted)]">
+      <div className="mb-8 flex flex-col items-center text-center">
+        <Wordmark size="lg" />
+        <p className="mt-5 font-display italic text-[var(--color-ink-muted)]">
           A hand-bound journal for living, breathing bread.
         </p>
       </div>
