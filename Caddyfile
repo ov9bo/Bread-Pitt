@@ -1,0 +1,17 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Long cache for Next static assets — they're content-hashed.
+	@nextStatic path /_next/static/*
+	header @nextStatic Cache-Control "public, max-age=31536000, immutable"
+
+	# Telegram webhooks must reach the app even on slow rebuilds.
+	@webhook path /api/telegram/webhook
+	reverse_proxy @webhook crustopher:3000 {
+		flush_interval -1
+	}
+
+	reverse_proxy crustopher:3000
+
+	tls {$ACME_EMAIL}
+}

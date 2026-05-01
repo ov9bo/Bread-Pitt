@@ -1,0 +1,33 @@
+**/node_modules
+.next
+out
+build
+dist
+.git
+.gitignore
+.github
+.vscode
+.idea
+.turbo
+.cache
+.vercel
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment & data — never bake into the image.
+.env
+.env.local
+.env.production
+data
+docker-compose.override.yml
+
+# Tooling artifacts
+*.tsbuildinfo
+coverage
+.nyc_output
+
+# Editor swap files
+*.swp
+*.swo

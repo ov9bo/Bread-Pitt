@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+/* ===================================================================
+   Crustopher — design tokens
+   Palette is built around the colors of bread itself: crust, crumb,
+   flour, char, butter, levain, hooch. Dark mode is the default.
+   =================================================================== */
+
+@theme {
+  /* Fonts — set via next/font CSS variables in app/layout.tsx */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Bread-batch easing — slow start, confident finish, the way dough relaxes */
+  --ease-bread: cubic-bezier(0.32, 0.72, 0.16, 1);
+  --ease-rise: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-fold: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Radii — soft like a banneton edge */
+  --radius-jar: 1.25rem;
+  --radius-loaf: 1.75rem;
+
+  /* Shadows — warm, not blue */
+  --shadow-flour: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(26 15 8 / 0.18);
+  --shadow-oven: 0 1px 0 rgb(0 0 0 / 0.04), 0 18px 48px -16px rgb(26 15 8 / 0.45);
+
+  /* Color tokens (default = dark theme) */
+  --color-crumb: #171311;
+  --color-flour: #221c18;
+  --color-flour-soft: #2a2320;
+  --color-char: #0b0807;
+  --color-ink: #f5ebd9;
+  --color-ink-muted: #b8a991;
+  --color-ink-faint: #7a6b56;
+  --color-line: #312822;
+  --color-line-soft: #261f1b;
+
+  --color-crust: #d9924a;
+  --color-crust-soft: #b5651d;
+  --color-butter: #f1cf7a;
+  --color-levain: #9cae7c;
+  --color-hooch: #7a6553;
+}
+
+/* Light theme overrides — applied via [data-theme="light"] */
+[data-theme="light"] {
+  --color-crumb: #faf4e7;
+  --color-flour: #f0e6d2;
+  --color-flour-soft: #ebe0c5;
+  --color-char: #1a0f08;
+  --color-ink: #1a0f08;
+  --color-ink-muted: #6b5942;
+  --color-ink-faint: #a08f74;
+  --color-line: #e3d6b8;
+  --color-line-soft: #ece2c8;
+
+  --color-crust: #b5651d;
+  --color-crust-soft: #d9924a;
+  --color-butter: #e8c063;
+  --color-levain: #7a8b5c;
+  --color-hooch: #5c4a3b;
+}
+
+/* ===================================================================
+   Base
+   =================================================================== */
+
+html,
+body {
+  background: var(--color-crumb);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fraunces optical-size axis — let display sizes grow expressive */
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 0;
+  letter-spacing: -0.015em;
+}
+
+.font-display-tight {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 0;
+  letter-spacing: -0.03em;
+}
+
+.numerals-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Smooth theme transitions, but never on first paint */
+html.theme-ready,
+html.theme-ready * {
+  transition:
+    background-color 360ms var(--ease-bread),
+    border-color 360ms var(--ease-bread),
+    color 240ms var(--ease-bread);
+}
+
+/* Selection in butter, because the whole app is bread */
+::selection {
+  background: var(--color-butter);
+  color: var(--color-char);
+}
+
+/* Editorial scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-hooch);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===================================================================
+   Ambient — the page breathes (10s cycle, GPU-cheap, reduced-motion safe)
+   =================================================================== */
+
+@keyframes ambient-breathe {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(0, -1.5%, 0) scale(1.04);
+    opacity: 0.75;
+  }
+}
+
+@keyframes hooch-drift {
+  0% { transform: translate3d(-2%, 0, 0); }
+  100% { transform: translate3d(2%, 0, 0); }
+}
+
+@keyframes bubble-rise {
+  0% { transform: translateY(8px) scale(0.9); opacity: 0; }
+  20% { opacity: 0.9; }
+  100% { transform: translateY(-22px) scale(1.05); opacity: 0; }
+}
+
+@keyframes pulse-crust {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-crust) 35%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--color-crust) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===================================================================
+   Custom utilities
+   =================================================================== */
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility text-pretty {
+  text-wrap: pretty;
+}
+
+@utility hairline {
+  border-color: var(--color-line);
+}
+
+/* Editorial column — what reading actually wants */
+@utility prose-column {
+  max-width: 68ch;
+  margin-inline: auto;
+}
+
+/* Deckled edge — like hand-torn paper */
+@utility deckle {
+  mask-image: radial-gradient(circle at 0 50%, transparent 4px, black 5px),
+              radial-gradient(circle at 100% 50%, transparent 4px, black 5px);
+  -webkit-mask-composite: source-in;
+}
+
+/* ===================================================================
+   Editorial prose — used to render parsed markdown from the guides.
+   Rich, generous, opinionated. Tightly tuned to Fraunces + Geist.
+   =================================================================== */
+
+.prose-bread {
+  color: var(--color-ink);
+  font-size: 1rem;
+  line-height: 1.72;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.prose-bread > * + * { margin-top: 1.05em; }
+
+.prose-bread h1,
+.prose-bread h2,
+.prose-bread h3,
+.prose-bread h4 {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 0;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+.prose-bread h1 { font-size: clamp(2.25rem, 4vw, 3rem); line-height: 1; margin-top: 0; }
+.prose-bread h2 { font-size: clamp(1.65rem, 3vw, 2rem); line-height: 1.1; margin-top: 2.25em; }
+.prose-bread h3 { font-size: 1.25rem; line-height: 1.25; margin-top: 1.75em; font-style: italic; color: var(--color-crust); }
+.prose-bread h4 { font-size: 1.05rem; margin-top: 1.5em; color: var(--color-ink-muted); }
+
+.prose-bread h2 > a,
+.prose-bread h3 > a,
+.prose-bread h4 > a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prose-bread p { text-wrap: pretty; }
+
+.prose-bread strong { color: var(--color-ink); font-weight: 600; }
+.prose-bread em { color: var(--color-crust); font-style: italic; }
+
+.prose-bread a {
+  color: var(--color-crust);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-crust) 35%, transparent);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 240ms var(--ease-bread);
+}
+.prose-bread a:hover { text-decoration-color: var(--color-crust); }
+
+.prose-bread blockquote {
+  border-left: 2px solid var(--color-crust);
+  padding-left: 1.1rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--color-ink-muted);
+  font-size: 1.1em;
+}
+
+.prose-bread ul,
+.prose-bread ol { padding-left: 1.4em; }
+.prose-bread li { margin-top: 0.4em; }
+.prose-bread ul > li::marker { color: var(--color-crust); }
+.prose-bread ol > li::marker { color: var(--color-crust); font-family: var(--font-mono); font-size: 0.85em; }
+
+.prose-bread hr {
+  border: 0;
+  border-top: 1px solid var(--color-line-soft);
+  margin: 2.5em auto;
+  width: 60%;
+}
+
+.prose-bread code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: color-mix(in oklab, var(--color-crust) 10%, transparent);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: var(--color-crust);
+}
+
+.prose-bread pre {
+  background: var(--color-flour);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-jar);
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  font-size: 0.9em;
+}
+.prose-bread pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-ink);
+}
+
+.prose-bread table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.94em;
+  margin: 1.5em 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-jar);
+  overflow: hidden;
+}
+.prose-bread thead { background: color-mix(in oklab, var(--color-crust) 8%, transparent); }
+.prose-bread th,
+.prose-bread td {
+  padding: 0.7em 0.95em;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-line-soft);
+}
+.prose-bread th {
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-muted);
+}
+.prose-bread tr:last-child td { border-bottom: 0; }
+.prose-bread tbody tr:hover { background: color-mix(in oklab, var(--color-crust) 4%, transparent); }
+
+.prose-bread mark {
+  background: color-mix(in oklab, var(--color-butter) 35%, transparent);
+  color: var(--color-ink);
+  padding: 0 2px;
+  border-radius: 2px;
+}

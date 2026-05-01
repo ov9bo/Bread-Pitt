@@ -1,0 +1,54 @@
+services:
+  crustopher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: crustopher:latest
+    container_name: crustopher
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: file:./data/crustopher.db
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-Baker}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "3000"
+    # Uncomment to expose directly without Caddy:
+    # ports:
+    #   - "3000:3000"
+    networks:
+      - crustopher
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: crustopher-caddy
+    restart: unless-stopped
+    depends_on:
+      - crustopher
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - crustopher
+
+networks:
+  crustopher:
+
+volumes:
+  caddy_data:
+  caddy_config:
