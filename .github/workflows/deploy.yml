@@ -29,7 +29,7 @@ jobs:
             if [ -d .deploy-repo ]; then
               cd .deploy-repo && git fetch origin main && git reset --hard origin/main && cd ..
             else
-              git clone --branch main --single-branch https://github.com/ov9bo/Bread-Pitt.git .deploy-repo
+              git clone --branch main --single-branch git@github.com:ov9bo/Bread-Pitt.git .deploy-repo
             fi
 
             # Sync source files (excluding server-specific configs)
