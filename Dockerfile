@@ -79,6 +79,7 @@ COPY --from=build --chown=breadpitt:breadpitt /app/drizzle ./drizzle
 COPY --from=build --chown=breadpitt:breadpitt /app/scripts ./scripts
 COPY --from=build --chown=breadpitt:breadpitt /app/lib ./lib
 COPY --from=build --chown=breadpitt:breadpitt /app/tsconfig.json ./tsconfig.json
+COPY --from=build --chown=breadpitt:breadpitt /app/tsconfig.scripts.json ./tsconfig.scripts.json
 COPY --from=build --chown=breadpitt:breadpitt /app/package.json ./package.json
 # Pruned production node_modules for migration scripts (better-sqlite3, drizzle, tsx, etc).
 COPY --from=build --chown=breadpitt:breadpitt /app/node_modules ./node_modules

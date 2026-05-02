@@ -2,10 +2,10 @@
 set -e
 
 echo "[bread-pitt] applying migrations…"
-node node_modules/tsx/dist/cli.mjs scripts/migrate.ts
+node node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.scripts.json scripts/migrate.ts
 
 echo "[bread-pitt] syncing knowledge…"
-node node_modules/tsx/dist/cli.mjs scripts/sync-knowledge.ts
+node node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.scripts.json scripts/sync-knowledge.ts
 
 # Optional: seed admin if ADMIN_PASSWORD is set and no user exists yet.
 if [ -n "${ADMIN_PASSWORD:-}" ]; then
@@ -16,7 +16,7 @@ if [ -n "${ADMIN_PASSWORD:-}" ]; then
     process.exit(c.n > 0 ? 1 : 0);
   " 2>/dev/null; then
     echo "[bread-pitt] seeding admin…"
-    node node_modules/tsx/dist/cli.mjs scripts/seed-admin.ts \
+    node node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.scripts.json scripts/seed-admin.ts \
       "$ADMIN_PASSWORD" "${ADMIN_DISPLAY_NAME:-Baker}" || true
   fi
 fi
