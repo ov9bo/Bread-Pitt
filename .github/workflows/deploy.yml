@@ -10,62 +10,60 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script_stop: true
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-            cd /docker/breadpitt
+      - name: Pull latest code
+        run: |
+          cd /docker/breadpitt
+          if [ -d .deploy-repo ]; then
+            cd .deploy-repo && git fetch origin main && git reset --hard origin/main && cd ..
+          else
+            git clone --branch main --single-branch git@github.com:ov9bo/Bread-Pitt.git .deploy-repo
+          fi
 
-            echo "==> Pulling latest code"
-            if [ -d .deploy-repo ]; then
-              cd .deploy-repo && git fetch origin main && git reset --hard origin/main && cd ..
-            else
-              git clone --branch main --single-branch git@github.com:ov9bo/Bread-Pitt.git .deploy-repo
+      - name: Sync source files
+        run: |
+          cd /docker/breadpitt
+          rsync -a --delete \
+            --exclude='.env' \
+            --exclude='data/' \
+            --exclude='docker-compose.yml' \
+            --exclude='.deploy-repo' \
+            .deploy-repo/ ./
+
+      - name: Backup database
+        run: |
+          cd /docker/breadpitt
+          cp data/bread-pitt.db data/backups/pre-deploy-$(date +%s).db 2>/dev/null || true
+
+      - name: Tag current image for rollback
+        run: docker tag breadpitt:latest breadpitt:rollback 2>/dev/null || true
+
+      - name: Build new image
+        run: |
+          cd /docker/breadpitt
+          docker compose build
+
+      - name: Deploy new container
+        run: |
+          cd /docker/breadpitt
+          docker compose up -d --force-recreate --timeout 30
+
+      - name: Health check
+        run: |
+          sleep 8
+          for i in $(seq 1 10); do
+            if docker exec breadpitt node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))" 2>/dev/null; then
+              echo "Deploy successful!"
+              docker image prune -f
+              exit 0
             fi
-
-            # Sync source files (excluding server-specific configs)
-            rsync -a --delete \
-              --exclude='.env' \
-              --exclude='data/' \
-              --exclude='docker-compose.yml' \
-              --exclude='.deploy-repo' \
-              .deploy-repo/ ./
-
-            echo "==> Backing up DB before deploy"
-            cp data/bread-pitt.db data/backups/pre-deploy-$(date +%s).db 2>/dev/null || true
-
-            echo "==> Tagging current image for rollback"
-            docker tag breadpitt:latest breadpitt:rollback 2>/dev/null || true
-
-            echo "==> Building new image"
-            docker compose build
-
-            echo "==> Restarting container"
-            docker compose up -d --force-recreate --timeout 30
-
-            echo "==> Waiting for health check"
-            sleep 8
-            for i in $(seq 1 10); do
-              if docker exec breadpitt node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))" 2>/dev/null; then
-                echo "==> Deploy successful!"
-                docker image prune -f
-                exit 0
-              fi
-              echo "    Attempt $i/10 - waiting..."
-              sleep 5
-            done
-
-            echo "==> Health check FAILED - rolling back"
-            docker compose down --timeout 10
-            docker tag breadpitt:rollback breadpitt:latest
-            docker compose up -d
-            exit 1
+            echo "Attempt $i/10 - waiting..."
+            sleep 5
+          done
+          echo "Health check FAILED - rolling back"
+          docker compose down --timeout 10
+          docker tag breadpitt:rollback breadpitt:latest
+          docker compose up -d
+          exit 1
