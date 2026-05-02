@@ -1,0 +1,37 @@
+# Production overrides — reference for what runs on the server.
+# The server's /docker/breadpitt/docker-compose.yml is based on this.
+# This file is NOT used directly by the CI/CD pipeline.
+services:
+  breadpitt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: breadpitt:latest
+    container_name: breadpitt
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.breadpitt.rule=Host(`bread.monvi.cloud`)
+      - traefik.http.routers.breadpitt.tls=true
+      - traefik.http.routers.breadpitt.entrypoints=web,websecure
+      - traefik.http.routers.breadpitt.tls.certresolver=mytlschallenge
+      - traefik.http.services.breadpitt.loadbalancer.server.port=3000
+      - traefik.http.middlewares.breadpitt-headers.headers.SSLRedirect=true
+      - traefik.http.middlewares.breadpitt-headers.headers.STSSeconds=315360000
+      - traefik.http.middlewares.breadpitt-headers.headers.browserXSSFilter=true
+      - traefik.http.middlewares.breadpitt-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.breadpitt-headers.headers.forceSTSHeader=true
+      - traefik.http.middlewares.breadpitt-headers.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.breadpitt-headers.headers.STSPreload=true
+      - traefik.http.routers.breadpitt.middlewares=breadpitt-headers@docker
+    networks:
+      - n8n_default
+
+networks:
+  n8n_default:
+    external: true
