@@ -17,28 +17,6 @@ This is a **15-day project minimum** (14 days to build the starter + 1 day to ba
 
 Before you begin Day 1, gather:
 
-- 1 large, tall, clear glass jar with a loose-fitting lid (must hold 3× the volume of starter)
-- 1 second identical jar (you'll need it from Day 2 onward)
-- 1 small resealable glass jar (for the levain)
-- Digital kitchen scale (grams) — **non-negotiable; this recipe is gram-precise**
-- Mini whisk
-- Rubber spatula
-- Wooden spoon
-- 4–5 mixing bowls (medium and large)
-- Bench scraper (plastic preferred)
-- Banneton / proofing basket (≈ 9-inch round)
-- Clean tea towel or linen liner for the banneton
-- Plastic wrap (or a reusable cover)
-- Large plastic bag (kitchen bin liner works)
-- Dutch oven with lid (cast iron, holds 500°F)
-- Parchment paper
-- Lame, razor blade, or very sharp paring knife
-- Stand mixer with whisk attachment (only for the butter — skip if you're not making butter)
-- Rubber band (for marking starter growth)
-- White rice flour (for dusting the banneton — does not burn, won't stick)
-
----
-
 ## Master Ingredient List
 
 ### Sourdough Starter (cumulative over 14 days)

@@ -7,6 +7,11 @@ import { getStarterDayInfo } from "@/lib/processes/engine";
 import { Card } from "@/components/ui/Card";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { ReadingTOC } from "./ReadingTOC";
+import { EquipmentChecklist } from "@/components/library/EquipmentChecklist";
+import {
+  isEquipmentChecklistSlug,
+  stripEquipmentChecklistStaticList,
+} from "@/lib/library/equipment-checklist-data";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +45,11 @@ export default async function LibraryReader({
   const ordIdx = docChildren.findIndex((c) => c.slug === section.slug);
   const prev = ordIdx > 0 ? docChildren[ordIdx - 1] : null;
   const next = ordIdx >= 0 && ordIdx < docChildren.length - 1 ? docChildren[ordIdx + 1] : null;
+
+  const chapterHtml =
+    !isDoc && isEquipmentChecklistSlug(section.slug)
+      ? stripEquipmentChecklistStaticList(section.contentHtml)
+      : section.contentHtml;
 
   return (
     <div className="grid gap-12 lg:grid-cols-[1fr_240px] items-start">
@@ -84,10 +94,22 @@ export default async function LibraryReader({
           </div>
         </ScrollReveal>
 
-        <div
-          className="prose-bread prose-column"
-          dangerouslySetInnerHTML={{ __html: section.contentHtml }}
-        />
+        {isDoc ? (
+          <div
+            className="prose-bread prose-column"
+            dangerouslySetInnerHTML={{ __html: section.contentHtml }}
+          />
+        ) : (
+          <>
+            <div
+              className="prose-bread prose-column"
+              dangerouslySetInnerHTML={{ __html: chapterHtml }}
+            />
+            {isEquipmentChecklistSlug(section.slug) && (
+              <EquipmentChecklist sectionSlug={section.slug} />
+            )}
+          </>
+        )}
 
         {isDoc && children.length > 0 && (
           <ScrollReveal>
@@ -155,7 +177,7 @@ export default async function LibraryReader({
       {/* Sticky mini-TOC */}
       {!isDoc && (
         <aside className="hidden lg:block sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2">
-          <ReadingTOC contentHtml={section.contentHtml} />
+          <ReadingTOC contentHtml={chapterHtml} />
         </aside>
       )}
       {isDoc && children.length > 0 && (
