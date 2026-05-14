@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db/client";
 import { guideSections, processes } from "@/lib/db/schema";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.PUBLIC_BASE_URL ?? "https://breadpitt.app";
   const now = new Date();
