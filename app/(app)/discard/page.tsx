@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Archive } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import {
   getCurrentJar,
   getArchivedJars,
@@ -15,9 +16,32 @@ import { format, formatDistanceToNow } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "The discard shelf — sourdough discard recipes that don't waste a gram",
+  description:
+    "Track your sourdough discard jar gram-by-gram and turn it into pancakes, crackers, pizza, and more. Each recipe is graded by effort — pick what fits the day.",
+  keywords: [
+    "sourdough discard recipes",
+    "sourdough discard pancakes",
+    "sourdough discard crackers",
+    "sourdough discard pizza",
+    "discard jar",
+    "no-waste sourdough",
+  ],
+  alternates: { canonical: "/discard" },
+  openGraph: {
+    type: "website",
+    title: "The discard shelf — sourdough discard recipes",
+    description:
+      "Don't waste a gram. Track your discard jar and turn it into pancakes, crackers, pizza, and more.",
+    url: "/discard",
+  },
+};
+
 export default async function DiscardPage() {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  const { user } = viewer;
 
   const current = await getCurrentJar(user.id);
   const archived = await getArchivedJars(user.id, 6);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { getAllProcesses } from "@/lib/processes/engine";
 import { PROCESS_META } from "@/lib/processes/templates";
 import { Card, CardEyebrow } from "@/components/ui/Card";
@@ -11,8 +11,9 @@ import { formatDistanceToNow } from "date-fns";
 export const dynamic = "force-dynamic";
 
 export default async function JournalPage() {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  const { user } = viewer;
 
   const all = await getAllProcesses(user.id);
 

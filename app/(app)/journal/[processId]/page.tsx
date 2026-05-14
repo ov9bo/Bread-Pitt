@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Clock, X } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import {
   getProcess,
   getProcessSteps,
@@ -20,20 +21,39 @@ import {
   ObservationForm,
 } from "@/app/(app)/QuickActions";
 import { format, formatDistanceToNow } from "date-fns";
+import { JsonLd } from "@/lib/seo/jsonld";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ processId: string }>;
+}): Promise<Metadata> {
+  const { processId } = await params;
+  const process = await getProcess(processId);
+  if (!process) return { title: "Not found" };
+  const meta = PROCESS_META[process.type];
+  const title = process.nickname ? `${process.nickname} — ${meta.label}` : meta.label;
+  return {
+    title,
+    description: meta.tagline,
+    alternates: { canonical: `/journal/${process.id}` },
+    openGraph: { type: "article", title, description: meta.tagline, url: `/journal/${process.id}` },
+  };
+}
 
 export default async function ProcessPage({
   params,
 }: {
   params: Promise<{ processId: string }>;
 }) {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
   const { processId } = await params;
   const process = await getProcess(processId);
-  if (!process || process.userId !== user.id) notFound();
+  if (!process) notFound();
 
   const meta = PROCESS_META[process.type];
   const [steps, observations] = await Promise.all([
@@ -44,8 +64,23 @@ export default async function ProcessPage({
   // Group by dayIndex for starter_build, otherwise by ordinal
   const grouped = groupSteps(steps);
 
+  const howToJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: process.nickname ?? meta.label,
+    description: meta.tagline,
+    totalTime: meta.durationLabel,
+    step: steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.title,
+      ...(s.description ? { text: s.description } : {}),
+    })),
+  };
+
   return (
     <>
+      <JsonLd data={howToJsonLd} />
       <Link
         href="/journal"
         className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-crust)] transition-colors mb-6"

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_ROUTES = ["/login", "/setup", "/api/telegram/webhook", "/api/health"];
+const PROTECTED_PREFIXES = ["/settings"];
 const SESSION_COOKIE = "bread_pitt_session";
 
 function secret() {
@@ -13,14 +13,10 @@ function secret() {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (
-    PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/icons") ||
-    pathname.startsWith("/lottie") ||
-    pathname.startsWith("/fonts")
-  ) {
+  const isProtected = PROTECTED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+  if (!isProtected) {
     return NextResponse.next();
   }
 

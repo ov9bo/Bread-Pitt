@@ -22,12 +22,52 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+const SITE_URL = process.env.PUBLIC_BASE_URL ?? "https://breadpitt.app";
+
 export const metadata: Metadata = {
-  title: "Bread Pitt — your sourdough companion",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Bread Pitt — sourdough journal, starter tracker & discard recipes",
+    template: "%s · Bread Pitt",
+  },
   description:
-    "A hand-bound journal for living, breathing bread. Track your starter, your folds, your bakes.",
+    "A hand-bound sourdough journal: track your starter day by day, schedule bakes backwards from when bread should be ready, and turn discard into pancakes, crackers, and pizza.",
   applicationName: "Bread Pitt",
   authors: [{ name: "Bread Pitt" }],
+  keywords: [
+    "sourdough",
+    "sourdough starter",
+    "sourdough journal",
+    "bread baking",
+    "fermentation",
+    "discard recipes",
+    "sourdough discard",
+    "bake schedule",
+    "levain",
+    "bread troubleshooting",
+    "starter maintenance",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Bread Pitt",
+    title: "Bread Pitt — sourdough journal, starter tracker & discard recipes",
+    description:
+      "A hand-bound sourdough journal: track your starter, schedule bakes backwards, and turn discard into recipes.",
+    url: SITE_URL,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bread Pitt — sourdough journal",
+    description:
+      "Track your starter, schedule your bakes, and turn discard into pancakes, crackers, and pizza.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
 };
 
 export const viewport: Viewport = {

@@ -2,16 +2,20 @@ import { cookies } from "next/headers";
 import { AmbientGradient } from "@/components/brand/AmbientGradient";
 import { Nav } from "@/components/layout/Nav";
 import { LenisProvider } from "@/components/motion/LenisProvider";
+import { ReadOnlyProvider } from "@/components/auth/ReadOnlyProvider";
+import { getViewer } from "@/lib/auth/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const theme = (jar.get("bread_pitt_theme")?.value as "light" | "dark") ?? "dark";
+  const viewer = await getViewer();
+  const isOwner = !!viewer?.isOwner;
 
   return (
-    <>
+    <ReadOnlyProvider value={!isOwner}>
       <AmbientGradient />
       <LenisProvider />
-      <Nav theme={theme} />
+      <Nav theme={theme} isOwner={isOwner} />
       <main className="relative mx-auto max-w-6xl px-4 pb-24 pt-8 md:px-8 md:pt-10">
         {children}
       </main>
@@ -20,6 +24,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           Patience is the one ingredient you can't substitute.
         </p>
       </footer>
-    </>
+    </ReadOnlyProvider>
   );
 }

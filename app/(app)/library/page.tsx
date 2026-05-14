@@ -1,16 +1,31 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Search, Wrench } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { listDocs, getDocChildren } from "@/lib/knowledge/parse";
 import { Card, CardEyebrow } from "@/components/ui/Card";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "The library — sourdough guides & chapters",
+  description:
+    "Two beautifully bound sourdough guides: a complete starter walkthrough and a bake-day playbook. Open one to read; whatever day you're living right now pins itself to the top.",
+  alternates: { canonical: "/library" },
+  openGraph: {
+    type: "website",
+    title: "The Bread Pitt library — sourdough guides",
+    description:
+      "Two beautifully bound sourdough guides: starter walkthrough and bake-day playbook.",
+    url: "/library",
+  },
+};
+
 export default async function LibraryPage() {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
   const docs = await listDocs();
   const enriched = await Promise.all(

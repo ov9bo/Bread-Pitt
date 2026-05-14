@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { getSection, getDocChildren } from "@/lib/knowledge/parse";
 import { getStarterDayInfo } from "@/lib/processes/engine";
 import { Card } from "@/components/ui/Card";
@@ -12,16 +13,45 @@ import {
   isEquipmentChecklistSlug,
   stripEquipmentChecklistStaticList,
 } from "@/lib/library/equipment-checklist-data";
+import { JsonLd } from "@/lib/seo/jsonld";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const section = await getSection(decodeURIComponent(slug));
+  if (!section) return { title: "Not found" };
+  const description =
+    section.excerpt?.trim() ||
+    `${section.title} — a chapter in the Bread Pitt sourdough library.`;
+  const canonical = `/library/${section.slug}`;
+  return {
+    title: section.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "article",
+      title: section.title,
+      description,
+      url: canonical,
+      modifiedTime: section.updatedAt?.toISOString(),
+    },
+    twitter: { card: "summary_large_image", title: section.title, description },
+  };
+}
 
 export default async function LibraryReader({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  const { user } = viewer;
 
   const { slug } = await params;
   const decoded = decodeURIComponent(slug);
@@ -51,8 +81,21 @@ export default async function LibraryReader({
       ? stripEquipmentChecklistStaticList(section.contentHtml)
       : section.contentHtml;
 
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: section.title,
+    description: section.excerpt || section.title,
+    dateModified: section.updatedAt?.toISOString(),
+    inLanguage: "en",
+    isPartOf: { "@type": "Book", name: docSection?.title ?? "Bread Pitt library" },
+    author: { "@type": "Organization", name: "Bread Pitt" },
+    publisher: { "@type": "Organization", name: "Bread Pitt" },
+  };
+
   return (
     <div className="grid gap-12 lg:grid-cols-[1fr_240px] items-start">
+      <JsonLd data={articleJsonLd} />
       <article>
         <Link
           href={isDoc ? "/library" : `/library/${docSlug}`}

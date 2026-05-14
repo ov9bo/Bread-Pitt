@@ -17,9 +17,13 @@ import {
   confirmStarterMatureAction,
 } from "./processes/actions";
 import { snoozeNextReminderAction } from "./snooze-action";
+import { LoginPill } from "@/components/auth/LoginPill";
+import { useReadOnly } from "@/components/auth/ReadOnlyProvider";
 
 export function CompleteStepButton({ stepId }: { stepId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return <LoginPill label="Log in to mark done" />;
   return (
     <Button
       size="sm"
@@ -32,7 +36,9 @@ export function CompleteStepButton({ stepId }: { stepId: string }) {
 }
 
 export function SkipStepButton({ stepId }: { stepId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"
@@ -46,7 +52,9 @@ export function SkipStepButton({ stepId }: { stepId: string }) {
 }
 
 export function SnoozeButton({ minutes = 30 }: { minutes?: number }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"
@@ -60,7 +68,9 @@ export function SnoozeButton({ minutes = 30 }: { minutes?: number }) {
 }
 
 export function PauseButton({ processId }: { processId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"
@@ -74,7 +84,9 @@ export function PauseButton({ processId }: { processId: string }) {
 }
 
 export function ResumeButton({ processId }: { processId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return <LoginPill label="Log in to resume" />;
   return (
     <Button
       size="sm"
@@ -87,7 +99,9 @@ export function ResumeButton({ processId }: { processId: string }) {
 }
 
 export function RestartButton({ processId }: { processId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"
@@ -104,7 +118,9 @@ export function RestartButton({ processId }: { processId: string }) {
 }
 
 export function MaturityActions({ processId }: { processId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return <LoginPill label="Log in to confirm maturity" />;
   return (
     <div className="flex flex-wrap gap-2">
       <Button
@@ -141,7 +157,9 @@ export function MaturityActions({ processId }: { processId: string }) {
 }
 
 export function AbandonButton({ processId }: { processId: string }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"
@@ -166,9 +184,12 @@ const KINDS = [
 ] as const;
 
 export function ObservationForm({ processId, stepId }: { processId: string; stepId?: string }) {
+  const readOnly = useReadOnly();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("free");
   const [pending, start] = useTransition();
+
+  if (readOnly) return <div className="mt-5"><LoginPill label="Log in to add observations" /></div>;
 
   return (
     <div className="mt-5">

@@ -10,6 +10,8 @@ import { Input, Label, FieldGroup } from "@/components/ui/Input";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import type { ProcessType } from "@/lib/db/schema";
 import { startProcessAction } from "./actions";
+import { LoginPill } from "@/components/auth/LoginPill";
+import { useReadOnly } from "@/components/auth/ReadOnlyProvider";
 
 const ICONS: Record<ProcessType, React.ComponentType<{ size?: number; className?: string }>> = {
   starter_build: Wheat,
@@ -125,6 +127,7 @@ const OUT_OF_OVEN_OFFSET_MIN = 22 * 60 + 50;
 const FULLY_COOLED_OFFSET_MIN = 25 * 60 + 30;
 
 function StartForm({ tile }: { tile: Tile }) {
+  const readOnly = useReadOnly();
   const isBake = tile.type === "bake_day";
   const [anchorMode, setAnchorMode] = useState<"start" | "ready">("start");
   const [targetReadyAt, setTargetReadyAt] = useState<string>("");
@@ -296,9 +299,13 @@ function StartForm({ tile }: { tile: Tile }) {
         <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--color-ink-faint)]">
           {tile.meta.durationLabel}
         </span>
-        <Button type="submit" size="lg">
-          Begin <ArrowRight size={14} />
-        </Button>
+        {readOnly ? (
+          <LoginPill label="Log in to begin" size="lg" />
+        ) : (
+          <Button type="submit" size="lg">
+            Begin <ArrowRight size={14} />
+          </Button>
+        )}
       </div>
     </form>
   );

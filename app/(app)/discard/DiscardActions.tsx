@@ -6,11 +6,16 @@ import { Plus, ChefHat } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, FieldGroup } from "@/components/ui/Input";
 import { addDiscardAction, useDiscardAction, closeJarAction } from "./actions";
+import { LoginPill } from "@/components/auth/LoginPill";
+import { useReadOnly } from "@/components/auth/ReadOnlyProvider";
 
 export function AddDiscardForm() {
+  const readOnly = useReadOnly();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [grams, setGrams] = useState(50);
+
+  if (readOnly) return <div className="mt-5"><LoginPill label="Log in to add discard" /></div>;
 
   return (
     <div className="mt-5">
@@ -102,8 +107,11 @@ export function RecipeUseButton({
   grams: number;
   available: number;
 }) {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
   const enough = available >= grams;
+
+  if (readOnly) return <LoginPill label={`Log in to cook`} className="w-full" />;
 
   return (
     <form
@@ -129,7 +137,9 @@ export function RecipeUseButton({
 }
 
 export function CloseJarButton() {
+  const readOnly = useReadOnly();
   const [pending, start] = useTransition();
+  if (readOnly) return null;
   return (
     <Button
       size="sm"

@@ -1,20 +1,36 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { listTroubleshootRows, searchKnowledge } from "@/lib/knowledge/parse";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { TroubleshootBoard } from "./TroubleshootBoard";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "Sourdough troubleshooting — symptoms, diagnoses, fixes",
+  description:
+    "When something is off with your starter or loaf: search both Bread Pitt guides at once, or scan the merged symptom table to find what's wrong and how to fix it.",
+  keywords: [
+    "sourdough troubleshooting",
+    "starter not rising",
+    "sourdough problems",
+    "dense bread",
+    "gummy crumb",
+    "hooch",
+  ],
+  alternates: { canonical: "/library/troubleshoot" },
+};
+
 export default async function TroubleshootPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
   const { q } = await searchParams;
   const query = (q ?? "").trim();

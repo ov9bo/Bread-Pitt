@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { StarterJar } from "@/components/brand/StarterJar";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { Countdown } from "@/components/motion/SpringCounter";
-import { requireUser } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import {
   getActiveProcesses,
   getNextActions,
@@ -27,8 +27,9 @@ function formatTime(d: Date): string {
 }
 
 export default async function TodayPage() {
-  const user = await requireUser();
-  if (!user) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  const { user } = viewer;
 
   const [pref] = await db.select().from(preferences).where(eq(preferences.userId, user.id));
   const starterNickname = pref?.starterNickname ?? "The starter";

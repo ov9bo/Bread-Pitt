@@ -70,3 +70,13 @@ export async function requireUser() {
   const [user] = await db.select().from(users).where(eq(users.id, session.userId));
   return user ?? null;
 }
+
+export type Viewer = { user: typeof users.$inferSelect; isOwner: boolean };
+
+export async function getViewer(): Promise<Viewer | null> {
+  const [owner] = await db.select().from(users).limit(1);
+  if (!owner) return null;
+  const session = await readSession();
+  const isOwner = !!session && session.userId === owner.id;
+  return { user: owner, isOwner };
+}

@@ -3,22 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, BookOpen, FlaskConical, Wheat, Recycle, Settings } from "lucide-react";
+import { Home, BookOpen, FlaskConical, Wheat, Recycle, Settings, LogIn } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { cn } from "@/lib/utils/cn";
 
-const items = [
-  { href: "/", label: "Today", icon: Home },
-  { href: "/journal", label: "Journal", icon: BookOpen },
-  { href: "/processes", label: "Processes", icon: FlaskConical },
-  { href: "/library", label: "Library", icon: Wheat },
-  { href: "/discard", label: "Discard", icon: Recycle },
-  { href: "/settings", label: "Settings", icon: Settings },
+const allItems = [
+  { href: "/", label: "Today", icon: Home, ownerOnly: false },
+  { href: "/journal", label: "Journal", icon: BookOpen, ownerOnly: false },
+  { href: "/processes", label: "Processes", icon: FlaskConical, ownerOnly: false },
+  { href: "/library", label: "Library", icon: Wheat, ownerOnly: false },
+  { href: "/discard", label: "Discard", icon: Recycle, ownerOnly: false },
+  { href: "/settings", label: "Settings", icon: Settings, ownerOnly: true },
 ];
 
-export function Nav({ theme }: { theme: "light" | "dark" }) {
+export function Nav({ theme, isOwner }: { theme: "light" | "dark"; isOwner: boolean }) {
   const path = usePathname();
+  const items = allItems.filter((item) => !item.ownerOnly || isOwner);
 
   return (
     <header className="sticky top-0 z-30 px-4 pt-4 md:px-8 md:pt-6">
@@ -61,6 +62,15 @@ export function Nav({ theme }: { theme: "light" | "dark" }) {
         </ul>
 
         <div className="flex items-center gap-1.5 pr-1">
+          {!isOwner && (
+            <Link
+              href="/login"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-flour)]/40 px-3 py-1 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-crust)]/40 transition-colors"
+            >
+              <LogIn size={12} />
+              <span>Log in</span>
+            </Link>
+          )}
           <ThemeToggle initial={theme} />
         </div>
       </nav>
@@ -86,6 +96,17 @@ export function Nav({ theme }: { theme: "light" | "dark" }) {
             </li>
           );
         })}
+        {!isOwner && (
+          <li>
+            <Link
+              href="/login"
+              className="flex flex-col items-center gap-0.5 rounded-full px-3 py-1.5 text-[10px] text-[var(--color-ink-muted)]"
+            >
+              <LogIn size={14} />
+              <span>Log in</span>
+            </Link>
+          </li>
+        )}
       </ul>
     </header>
   );
